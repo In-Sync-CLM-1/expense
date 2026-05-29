@@ -1,0 +1,431 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bluspring CRM Design System - Brand Colors & Tokens */
+@layer base {
+  :root {
+    /* Brand Colors - Primary Blue */
+    --primary-blue: 217 91% 60%;
+    --deep-blue: 222 47% 15%;
+    --analytics-blue: 217 70% 50%;
+    --success-green: 142 76% 36%;
+
+    /* Neutrals */
+    --deep-slate: 222 30% 20%;
+    --charcoal: 220 13% 26%;
+    --medium-gray: 215 14% 40%;
+
+    /* Accents - Supporting */
+    --purple: 280 85% 65%;
+    --lavender: 280 70% 75%;
+    --sky-blue: 195 85% 75%;
+    --light-blue: 195 80% 82%;
+
+    /* Semantic Colors */
+    --success: 142 76% 36%;
+    --success-bg: 142 56% 92%;
+    --warning: 50 94% 68%;
+    --warning-bg: 48 100% 95%;
+    --error: 1 98% 69%;
+    --error-bg: 0 100% 95%;
+    --info: 217 85% 75%;
+    --info-bg: 217 76% 95%;
+
+    /* Visual Effects */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(222 47% 35%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(222 47% 15%) 0%, hsl(222 50% 25%) 100%);
+    --gradient-purple: linear-gradient(135deg, hsl(280 85% 65%) 0%, hsl(280 70% 75%) 100%);
+    --shadow-vibrant: 0 12px 40px -8px hsl(217 91% 60% / 0.35), 0 4px 12px -4px hsl(217 91% 60% / 0.2);
+    --shadow-glow: 0 8px 32px hsl(217 91% 60% / 0.25), 0 0 60px hsl(217 91% 60% / 0.15);
+    --shadow-accent: 0 12px 40px -8px hsl(222 47% 15% / 0.4), 0 4px 16px -4px hsl(222 47% 15% / 0.3);
+    --shadow-deep: 0 20px 60px -12px hsl(222 47% 15% / 0.5), 0 8px 24px -8px hsl(222 47% 15% / 0.3);
+    --shadow-3d: 0 15px 35px -10px rgba(0, 0, 0, 0.2), 0 8px 20px -8px rgba(0, 0, 0, 0.15), 0 2px 8px -2px rgba(0, 0, 0, 0.1);
+
+    /* Design System Tokens */
+    --background: 220 25% 96%;
+    --foreground: var(--deep-blue);
+    
+    --card: 0 0% 100%;
+    --card-foreground: var(--deep-blue);
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--deep-blue);
+    
+    --primary: var(--primary-blue);
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: var(--purple);
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 220 20% 96%;
+    --muted-foreground: var(--medium-gray);
+    
+    --accent: var(--deep-blue);
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: var(--error);
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: var(--primary-blue);
+    
+    --chart-1: var(--primary-blue);
+    --chart-2: var(--analytics-blue);
+    --chart-3: var(--purple);
+    --chart-4: 142 76% 36%;
+    --chart-5: var(--success-green);
+    
+    --radius: 0.75rem;
+
+    /* Sidebar Theme */
+    --sidebar-background: 222 35% 24%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 30% 32%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 28% 35%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    /* Dark mode tokens */
+    --background: 222 30% 10%;
+    --foreground: 0 0% 98%;
+    
+    --card: 222 25% 14%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 222 25% 14%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 217 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 280 85% 70%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 222 20% 18%;
+    --muted-foreground: 215 14% 65%;
+    
+    --accent: 217 50% 25%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: var(--error);
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 222 20% 22%;
+    --input: 222 20% 22%;
+    --ring: 217 91% 65%;
+    
+    --chart-1: 217 91% 65%;
+    --chart-2: 217 70% 55%;
+    --chart-3: 280 85% 70%;
+    --chart-4: 142 76% 45%;
+    --chart-5: 142 76% 40%;
+    
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(222 50% 40%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(222 47% 20%) 0%, hsl(222 50% 30%) 100%);
+    --gradient-purple: linear-gradient(135deg, hsl(280 85% 70%) 0%, hsl(280 70% 78%) 100%);
+    --shadow-vibrant: 0 8px 30px hsl(217 91% 65% / 0.35);
+    --shadow-glow: 0 0 40px hsl(217 91% 65% / 0.25);
+    --shadow-accent: 0 8px 30px hsl(222 47% 20% / 0.4);
+
+    /* Dark Sidebar */
+    --sidebar-background: 222 35% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 91% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 30% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 28% 25%;
+    --sidebar-ring: 217 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Gradient Text */
+  .gradient-text-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-purple {
+    background: var(--gradient-purple);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shadows */
+  .shadow-vibrant {
+    box-shadow: var(--shadow-vibrant);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
+  }
+
+  .shadow-deep {
+    box-shadow: var(--shadow-deep);
+  }
+
+  .shadow-3d {
+    box-shadow: var(--shadow-3d);
+  }
+
+  /* 3D Transform Effects */
+  .transform-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .lift-3d {
+    @apply transition-all duration-300;
+    transform: translateY(0) rotateX(0deg);
+  }
+
+  .lift-3d:hover {
+    transform: translateY(-8px) rotateX(2deg);
+    box-shadow: var(--shadow-deep);
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-deep;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-glow;
+  }
+
+  .hover-3d {
+    @apply transition-all duration-500 hover:-translate-y-3;
+    transform-style: preserve-3d;
+  }
+
+  .hover-3d:hover {
+    box-shadow: var(--shadow-deep);
+    transform: translateY(-12px) rotateX(3deg) scale(1.02);
+  }
+}
+
+/* Custom Component Styles */
+@layer components {
+  .glass-card {
+    @apply bg-white/95 dark:bg-card/95 backdrop-blur-lg border border-border/50 rounded-xl shadow-deep hover:shadow-vibrant transition-all duration-300;
+    transform: translateY(-4px) translateZ(0);
+  }
+
+  .stat-card {
+    @apply p-6 rounded-xl border border-border/30 bg-card text-card-foreground shadow-3d hover:shadow-deep hover-3d transition-all duration-300;
+    transform: translateY(-6px);
+  }
+
+  .gradient-border {
+    @apply relative before:absolute before:inset-0 before:rounded-xl before:p-[2px] before:bg-gradient-to-r before:from-primary-blue before:to-deep-blue before:-z-10;
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-deep);
+  }
+
+  .btn-primary {
+    @apply bg-deep-blue hover:bg-deep-blue/90 text-white shadow-vibrant hover:shadow-glow hover:-translate-y-1 transition-all duration-300;
+  }
+
+  .btn-secondary {
+    @apply bg-purple hover:bg-lavender text-white shadow-accent hover:shadow-deep hover:-translate-y-1 transition-all duration-300;
+  }
+
+  .btn-accent {
+    @apply bg-primary-blue hover:bg-primary-blue/90 text-white shadow-accent hover:shadow-deep hover:-translate-y-1 transition-all duration-300;
+  }
+
+  /* Sidebar Menu Button Hover Override */
+  [data-sidebar="menu-button"]:not([data-active="true"]):hover {
+    background-color: hsl(222 47% 15%) !important;
+    color: white !important;
+  }
+
+  [data-sidebar="menu-button"]:not([data-active="true"]):hover svg {
+    color: white !important;
+  }
+
+  /* React Big Calendar Styles */
+  .rbc-calendar {
+    font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  .rbc-header {
+    padding: 10px 3px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .rbc-today {
+    background-color: hsl(var(--muted));
+  }
+
+  .rbc-event {
+    padding: 2px 5px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .rbc-event:focus {
+    outline: 2px solid hsl(var(--ring));
+  }
+
+  .rbc-toolbar button {
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: hsl(var(--background));
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .rbc-toolbar button:hover {
+    background: hsl(var(--muted));
+  }
+
+  .rbc-toolbar button.rbc-active {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  .rbc-month-view,
+  .rbc-time-view,
+  .rbc-agenda-view {
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .rbc-month-row,
+  .rbc-day-bg,
+  .rbc-time-slot {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  .rbc-off-range-bg {
+    background: hsl(var(--muted));
+  }
+
+  .rbc-selected-cell {
+    background-color: hsl(var(--muted));
+  }
+}
+
+/* Utility: Hide scrollbar */
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Dashboard Card Animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes border-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-border-flow {
+  background-size: 200% 100%;
+  animation: border-flow 3s linear infinite;
+}
+
+.dashboard-card {
+  @apply rounded-2xl border border-border bg-card p-5 relative overflow-hidden transition-all duration-300;
+}
+
+.dashboard-card:hover {
+  @apply shadow-lg -translate-y-0.5;
+}
+
+.dashboard-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+}

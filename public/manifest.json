@@ -1,0 +1,19 @@
+{
+  "name": "Expense Claims",
+  "short_name": "Expenses",
+  "description": "Employee Expense Claim Management System",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
