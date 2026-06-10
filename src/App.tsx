@@ -15,6 +15,7 @@ import CreateOrg from "./pages/CreateOrg";
 import Dashboard from "./pages/Dashboard";
 import MyExpenses from "./pages/MyExpenses";
 import Approvals from "./pages/Approvals";
+import Advances from "./pages/Advances";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import MyProfile from "./pages/MyProfile";
@@ -66,6 +67,7 @@ export default function App() {
                     <Route path="/dashboard"   element={<Dashboard />} />
                     <Route path="/my-expenses" element={<MyExpenses />} />
                     <Route path="/approvals"   element={<Approvals />} />
+                    <Route path="/advances"    element={<Advances />} />
                     <Route path="/reports"     element={<Reports />} />
                     <Route path="/users"       element={<Users />} />
                     <Route path="/profile"     element={<MyProfile />} />

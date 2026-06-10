@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
 import {
-  LayoutDashboard, Plane, ShieldCheck, BarChart3, Users, UserCircle, LogOut, Receipt,
+  LayoutDashboard, Plane, ShieldCheck, BarChart3, Users, UserCircle, LogOut, Receipt, HandCoins,
 } from "lucide-react";
 import { getRolePermissions } from "@/lib/rolePermissions";
 import type { Organization } from "@/contexts/OrgContext";
@@ -66,6 +66,18 @@ export function AppSidebar({ user: _user, userRoles, onLogout, currentOrg }: Pro
             <SidebarGroupContent>
               <SidebarMenu>
                 <NavItem to="/approvals" icon={<ShieldCheck className="h-4 w-4" />} label="Expense Approvals" />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Finance */}
+        {perms.canManageAdvances && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Finance</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <NavItem to="/advances" icon={<HandCoins className="h-4 w-4" />} label="Advances" />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
