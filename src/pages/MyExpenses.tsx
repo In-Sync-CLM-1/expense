@@ -13,6 +13,7 @@ import { ExpenseClaimDialog } from "@/components/expenses/ExpenseClaimDialog";
 import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
 import { exportClaimsToCSV } from "@/lib/expenseExport";
 import { useOrg } from "@/contexts/OrgContext";
+import { MyAdvanceSummary } from "@/components/expenses/MyAdvanceSummary";
 
 export default function MyExpenses() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -65,6 +66,9 @@ export default function MyExpenses() {
         <StatCard icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} label="Approved" value={stats.approved} sub={`₹${stats.approvedAmount.toLocaleString("en-IN")}`} />
         <StatCard icon={<IndianRupee className="h-4 w-4 text-purple-500" />} label="Total Claimed" value={`₹${stats.totalAmount.toLocaleString("en-IN")}`} />
       </div>
+
+      {/* My advance position (shown only when the employee holds advances) */}
+      <MyAdvanceSummary orgId={currentOrg?.id} />
 
       {/* List */}
       <Card>

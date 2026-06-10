@@ -5,6 +5,7 @@ export interface Permissions {
   canViewReports: boolean;
   canManageUsers: boolean;
   canMarkReimbursed: boolean;
+  canManageAdvances: boolean;
 }
 
 export function getRolePermissions(
@@ -20,6 +21,7 @@ export function getRolePermissions(
     canViewReports: isAdmin,
     canManageUsers: isAdmin,
     canMarkReimbursed: isAdmin,
+    canManageAdvances: isAdmin,
   };
 }
 
