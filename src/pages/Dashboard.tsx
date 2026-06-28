@@ -42,7 +42,7 @@ export default function Dashboard() {
           </div>
         )}
         <Button className="mt-4" onClick={() => navigate("/my-expenses")}>
-          <Plane className="h-4 w-4 mr-2" /> View My Claims
+          <Receipt className="h-4 w-4 mr-2" /> View My Claims
         </Button>
       </section>
 
