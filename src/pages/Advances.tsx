@@ -149,12 +149,12 @@ export default function Advances() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="text-lg">By employee &amp; trip</CardTitle>
+            <CardTitle className="text-lg">By employee &amp; claim</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative w-full max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search employee or trip…"
+                  placeholder="Search employee or claim…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -180,7 +180,7 @@ export default function Advances() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Employee</TableHead>
-                    <TableHead>Trip</TableHead>
+                    <TableHead>Claim</TableHead>
                     <TableHead className="text-right">Advances Given (₹)</TableHead>
                     <TableHead className="text-right">Expenses Approved (₹)</TableHead>
                     <TableHead className="text-right">Balance (₹)</TableHead>
@@ -213,7 +213,7 @@ export default function Advances() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Employee</TableHead>
-                    <TableHead>Trip</TableHead>
+                    <TableHead>Claim</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead className="text-right">Amount (₹)</TableHead>
                     <TableHead className="w-10" />
@@ -309,7 +309,7 @@ function ReconRow({ row }: { row: ReconciliationRow }) {
         <div className="text-xs text-muted-foreground">{row.email}</div>
       </TableCell>
       <TableCell className="text-sm">
-        {row.trip_title ?? <span className="text-muted-foreground">General (no trip)</span>}
+        {row.trip_title ?? <span className="text-muted-foreground">General (no claim)</span>}
       </TableCell>
       <TableCell className="text-right font-semibold">{inr(Number(row.advances_total || 0))}</TableCell>
       <TableCell className="text-right">{inr(Number(row.expenses_total || 0))}</TableCell>
@@ -366,7 +366,7 @@ function RecordAdvanceDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><HandCoins className="h-5 w-5" /> Record an advance</DialogTitle>
           <DialogDescription>
-            Money given to an employee. Tie it to a trip so the expenses they file for that trip settle against it, or leave the trip blank for a general advance.
+            Money given to an employee. Tie it to a claim so the expenses filed against that claim settle against it, or leave blank for a general advance.
           </DialogDescription>
         </DialogHeader>
 
@@ -407,17 +407,17 @@ function RecordAdvanceDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Trip (optional)</Label>
+            <Label>Link to claim (optional)</Label>
             <Select
               value={claimId ?? "general"}
               onValueChange={(v) => setClaimId(v === "general" ? null : v)}
               disabled={!userId}
             >
               <SelectTrigger>
-                <SelectValue placeholder={userId ? "General (no trip)" : "Select employee first"} />
+                <SelectValue placeholder={userId ? "General (no claim)" : "Select employee first"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="general">General (no trip)</SelectItem>
+                <SelectItem value="general">General (no claim)</SelectItem>
                 {claims.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.trip_title} · {format(new Date(c.trip_start_date), "dd MMM")}

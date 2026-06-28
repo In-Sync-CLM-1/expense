@@ -365,8 +365,8 @@ export default function Reports() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Employee</TableHead>
-                      <TableHead>Trip</TableHead>
-                      <TableHead>Destination</TableHead>
+                      <TableHead>Claim Title</TableHead>
+                      <TableHead>Location / Project</TableHead>
                       <TableHead>Approved On</TableHead>
                       <TableHead className="text-right">Approved Amount</TableHead>
                       <TableHead />

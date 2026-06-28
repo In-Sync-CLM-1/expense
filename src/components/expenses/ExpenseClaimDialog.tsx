@@ -207,16 +207,16 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            {step === 1 ? "New Expense Claim — Trip Details" : "Add Expenses"}
+            {step === 1 ? "New Expense Claim — Details" : "Add Expenses"}
           </DialogTitle>
         </DialogHeader>
 
         {step === 1 ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Trip Title *</Label>
+              <Label>Claim Title *</Label>
               <Input
-                placeholder="e.g., Client meeting - Mumbai"
+                placeholder="e.g., Client meeting — Delhi, Office supplies — June"
                 value={tripData.trip_title}
                 onChange={(e) => setTripData({ ...tripData, trip_title: e.target.value })}
                 required
@@ -244,17 +244,17 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Destination</Label>
+              <Label>Location / Project (optional)</Label>
               <Input
-                placeholder="e.g., Mumbai, Maharashtra"
+                placeholder="e.g., Delhi office, Project Alpha"
                 value={tripData.destination}
                 onChange={(e) => setTripData({ ...tripData, destination: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Purpose</Label>
+              <Label>Purpose (optional)</Label>
               <Textarea
-                placeholder="Brief purpose of the trip"
+                placeholder="Brief description of what this claim is for"
                 value={tripData.purpose}
                 onChange={(e) => setTripData({ ...tripData, purpose: e.target.value })}
                 rows={2}
@@ -272,6 +272,7 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
             <p className="text-sm text-muted-foreground">
               <strong>{tripData.trip_title}</strong> · {tripData.trip_start_date} to {tripData.trip_end_date}
               {tripData.destination && ` · ${tripData.destination}`}
+              {tripData.purpose && ` · ${tripData.purpose}`}
             </p>
 
             <div className="space-y-3">

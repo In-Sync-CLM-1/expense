@@ -28,7 +28,7 @@ export function MyAdvanceSummary({ orgId }: { orgId?: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Trip</TableHead>
+                <TableHead>Claim</TableHead>
                 <TableHead className="text-right">Advance Received (₹)</TableHead>
                 <TableHead className="text-right">Expenses Approved (₹)</TableHead>
                 <TableHead className="text-right">Balance (₹)</TableHead>

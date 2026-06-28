@@ -320,7 +320,7 @@ export default function CommandCenter() {
                 <TableRow>
                   <TableHead>Employee</TableHead>
                   <TableHead>Organisation</TableHead>
-                  <TableHead>Trip</TableHead>
+                  <TableHead>Claim Title</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Date</TableHead>

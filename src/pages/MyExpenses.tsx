@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Receipt, Wallet, Clock, CheckCircle2, IndianRupee, Plane, Download } from "lucide-react";
+import { Loader2, Plus, Receipt, Wallet, Clock, CheckCircle2, IndianRupee, Download } from "lucide-react";
 import { format } from "date-fns";
 import {
   useCurrentUser, useExpenseClaims, useExpenseClaimDetail,
@@ -43,7 +43,7 @@ export default function MyExpenses() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Plane className="h-7 w-7" /> Travel Expenses
+            <Receipt className="h-7 w-7" /> My Expenses
           </h1>
           <p className="text-muted-foreground">Submit and track your expense claims</p>
         </div>

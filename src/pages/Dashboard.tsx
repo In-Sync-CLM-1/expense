@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Receipt, Clock, CheckCircle2, IndianRupee, Plane, ShieldCheck, BarChart3 } from "lucide-react";
+import { Loader2, Receipt, Clock, CheckCircle2, IndianRupee, ShieldCheck, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser, useExpenseClaims, useOrgExpenseSummary } from "@/hooks/useExpenseClaims";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -29,7 +29,7 @@ export default function Dashboard() {
       {/* My expenses */}
       <section>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Plane className="h-5 w-5" /> My Expense Claims
+          <Receipt className="h-5 w-5" /> My Expense Claims
         </h2>
         {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>

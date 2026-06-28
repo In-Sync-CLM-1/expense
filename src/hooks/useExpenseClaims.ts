@@ -53,6 +53,15 @@ export interface ExpenseClaim {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const EXPENSE_TYPES = [
+  { value: "food", label: "Food & Meals" },
+  { value: "accommodation", label: "Accommodation" },
+  { value: "office_supplies", label: "Office Supplies" },
+  { value: "software", label: "Software & Subscriptions" },
+  { value: "equipment", label: "Equipment & Hardware" },
+  { value: "training", label: "Training & Conferences" },
+  { value: "entertainment", label: "Client Entertainment" },
+  { value: "communication", label: "Communication" },
+  { value: "medical", label: "Medical" },
   { value: "airfare", label: "Airfare" },
   { value: "train", label: "Train" },
   { value: "bus", label: "Bus" },
@@ -60,8 +69,6 @@ export const EXPENSE_TYPES = [
   { value: "auto", label: "Auto" },
   { value: "fuel", label: "Fuel" },
   { value: "hotel", label: "Hotel" },
-  { value: "food", label: "Food & Meals" },
-  { value: "communication", label: "Communication" },
   { value: "visa", label: "Visa / Passport" },
   { value: "miscellaneous", label: "Miscellaneous" },
 ] as const;
