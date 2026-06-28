@@ -3,14 +3,28 @@ import { Button } from "@/components/ui/button";
 import {
   Receipt, BarChart3, Users, ShieldCheck, ArrowRight,
   TrendingUp, FileText, CheckCircle2, AlertCircle, Download,
-  Eye, Lock, Smartphone,
+  Eye, Lock, Smartphone, Utensils, Laptop, Wrench, GraduationCap,
+  Plane, Building2, Stethoscope, Package,
 } from "lucide-react";
 
 const painPoints = [
   { icon: AlertCircle, text: "Expense reports submitted on WhatsApp or email" },
-  { icon: AlertCircle, text: "No visibility into what's approved vs. what's pending" },
+  { icon: AlertCircle, text: "No standard process for meals, office supplies, or subscriptions — only travel gets tracked" },
   { icon: AlertCircle, text: "Finance scrambling at month-end to reconcile claims" },
   { icon: AlertCircle, text: "No audit trail when questions arise" },
+];
+
+const expenseCategories = [
+  { icon: Utensils, label: "Food & Meals" },
+  { icon: Building2, label: "Accommodation" },
+  { icon: Plane, label: "Travel" },
+  { icon: Laptop, label: "Software & Subscriptions" },
+  { icon: Wrench, label: "Equipment" },
+  { icon: GraduationCap, label: "Training & Conferences" },
+  { icon: Receipt, label: "Client Entertainment" },
+  { icon: Stethoscope, label: "Medical" },
+  { icon: Package, label: "Office Supplies" },
+  { icon: Smartphone, label: "Communication" },
 ];
 
 const features = [
@@ -142,9 +156,9 @@ export default function Landing() {
           </h1>
 
           <p className="text-lg md:text-xl text-white/65 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Give your CFO, finance team, and business heads complete visibility
-            into every expense claim — from submission to reimbursement —
-            with structured approvals and audit-ready reports.
+            From meals and travel to software, office supplies, and training —
+            every employee expense goes through a single structured workflow:
+            submit, approve, reimburse, export.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -184,6 +198,21 @@ export default function Landing() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Category Strip ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-7xl px-6 py-10">
+        <p className="text-center text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-6">
+          Claim any expense, not just travel
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          {expenseCategories.map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors">
+              <Icon className="h-4 w-4 text-primary" />
+              {label}
+            </div>
+          ))}
         </div>
       </section>
 
