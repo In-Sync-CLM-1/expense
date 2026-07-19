@@ -104,24 +104,17 @@ const CANVAS_BG = `background:
   radial-gradient(800px 500px at 95% 115%,rgba(236,72,153,.22),transparent 55%),
   linear-gradient(135deg,#160a10 0%,#221019 55%,#2a1224 100%)`;
 
-// App brand mark rebuilt inline (the app has no image logo: rose tile + wordmark).
-const LOGO_HTML = (o) => `
-  <div class="logocard">
-    <span class="logotile"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
-      <path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/>
-    </svg></span>
-    <span class="logotext">Expense&nbsp;Claims</span>
-  </div>`;
+// Company logo card — the official In-Sync lockup (user: In-Sync logo only).
+const INSYNC_LOGO = 'data:image/png;base64,' +
+  readFileSync(join(here, 'recordings', 'insync-logo-band.png')).toString('base64');
+const LOGO_HTML = () => `<div class="logocard"><img src="${INSYNC_LOGO}"/></div>`;
 
 const baseCss = (o) => `
   *{margin:0;padding:0;box-sizing:border-box}html,body{height:100%}
   body{font-family:'Segoe UI',Arial,sans-serif;color:#f5e7ee;overflow:hidden;${CANVAS_BG}}
   .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:${o === 'tall' ? '60px 44px 200px' : '56px'}}
-  .logocard{background:#fff;border-radius:20px;padding:${o === 'tall' ? '18px 34px' : '14px 26px'};box-shadow:0 14px 40px rgba(0,0,0,.35);display:flex;align-items:center;gap:14px}
-  .logotile{background:#e11d48;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:${o === 'tall' ? 12 : 9}px}
-  .logotile svg{width:${o === 'tall' ? 44 : 34}px;height:${o === 'tall' ? 44 : 34}px;display:block}
-  .logotext{color:#111827;font-weight:800;font-size:${o === 'tall' ? 40 : 32}px;letter-spacing:-.5px}
+  .logocard{background:#fff;border-radius:20px;padding:${o === 'tall' ? '20px 34px' : '16px 28px'};box-shadow:0 14px 40px rgba(0,0,0,.35)}
+  .logocard img{height:${o === 'tall' ? 108 : 82}px;width:auto;display:block}
   .kicker{color:#fb7185;font-weight:800;font-size:${o === 'tall' ? 26 : 22}px;letter-spacing:2.5px;text-transform:uppercase}
   h1{font-weight:800;letter-spacing:-.02em;line-height:1.1;font-size:${o === 'tall' ? 66 : 64}px}
   h1 .g{color:#fb7185}
