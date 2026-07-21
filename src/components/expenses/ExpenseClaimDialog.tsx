@@ -6,10 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Loader2, Receipt, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Loader2, Receipt, X, FileText, Image as ImageIcon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EXPENSE_TYPES, useCreateClaim, uploadReceipt, uploadProofFiles, validateProofFile, MAX_PROOF_FILES, type ExpenseItem } from "@/hooks/useExpenseClaims";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 interface ExpenseClaimDialogProps {
   open: boolean;
@@ -26,6 +38,7 @@ interface DraftItem {
   receipt_file?: File;
   receipt_url?: string;
   receipt_name?: string;
+  analyzing?: boolean;
 }
 
 const emptyItem: DraftItem = {
@@ -70,11 +83,56 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
     setItems(updated);
   };
 
-  const handleFileChange = (index: number, file: File | undefined) => {
-    const updated = [...items];
-    updated[index].receipt_file = file;
-    updated[index].receipt_name = file?.name;
-    setItems(updated);
+  const handleFileChange = async (index: number, file: File | undefined) => {
+    setItems((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], receipt_file: file, receipt_name: file?.name, analyzing: !!file };
+      return updated;
+    });
+    if (!file) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      const { data, error } = await supabase.functions.invoke("analyze-receipt", {
+        body: { file_base64: base64, mime_type: file.type },
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast.error(data?.error || "Could not read this receipt automatically.");
+        return;
+      }
+
+      const result = data.data as {
+        expense_type: string | null;
+        description: string | null;
+        amount: number | null;
+        expense_date: string | null;
+      };
+
+      setItems((prev) => {
+        const updated = [...prev];
+        const current = updated[index];
+        if (current.receipt_file !== file) return prev; // a newer file was selected meanwhile
+        updated[index] = {
+          ...current,
+          expense_type: current.expense_type || result.expense_type || current.expense_type,
+          description: current.description || result.description || current.description,
+          amount: current.amount || (result.amount != null ? String(result.amount) : current.amount),
+          expense_date: current.expense_date || result.expense_date || current.expense_date,
+        };
+        return updated;
+      });
+      toast.success("Filled in from the receipt — check the details before submitting.");
+    } catch (err) {
+      console.error("Receipt analysis failed:", err);
+      toast.error("Could not read this receipt automatically. Please fill in the details manually.");
+    } finally {
+      setItems((prev) => {
+        const updated = [...prev];
+        if (updated[index]) updated[index] = { ...updated[index], analyzing: false };
+        return updated;
+      });
+    }
   };
 
   const handleProofFiles = (fileList: FileList | null) => {
@@ -334,6 +392,11 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
                             onChange={(e) => handleFileChange(index, e.target.files?.[0])}
                           />
                         </div>
+                        {item.analyzing && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
+                            <Sparkles className="h-3 w-3 animate-pulse" /> Reading receipt…
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1">
