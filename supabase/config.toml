@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.verify-otp]
 verify_jwt = false
+
+[functions.public-api]
+verify_jwt = false
