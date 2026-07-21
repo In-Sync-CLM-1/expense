@@ -1,4 +1,4 @@
-project_id = "hmqwmmlqfrrktfsiowdh"
+project_id = "ljokqicllbemfjytfhbi"
 
 [api]
 enabled = true
@@ -10,7 +10,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true
@@ -43,4 +43,10 @@ enable_confirmations = false
 verify_jwt = false
 
 [functions.admin-create-user]
+verify_jwt = false
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
 verify_jwt = false
