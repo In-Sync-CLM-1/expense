@@ -23,6 +23,15 @@ const PEOPLE = [
   { key: 'sandeep', email: 'sandeep@prosync-demo.in', name: 'Sandeep Kulkarni', phone: '+91 99300 66778', role: 'employee', reportsTo: 'rajesh' },
 ];
 
+// Teams — org structure for the "Spend by Team" report chart.
+// teams.name is globally unique across orgs (no per-org scoping in the schema),
+// so these stay Prosync-specific rather than generic "Engineering"/"Sales".
+const TEAMS = [
+  { name: 'Prosync Engineering Team', members: ['rajesh', 'arjun'] },
+  { name: 'Prosync Sales Team', members: ['priya', 'sandeep'] },
+  { name: 'Prosync Leadership', members: ['kavita'] },
+];
+
 const T = (days) => {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -286,6 +295,19 @@ const orgId = org.id;
   if (error) throw error;
 }
 log('org', orgId);
+
+log('creating teams…');
+for (const t of TEAMS) {
+  const { data: team, error: teamErr } = await sb.from('teams')
+    .insert({ name: t.name, org_id: orgId })
+    .select('id').single();
+  if (teamErr) throw teamErr;
+  const { error: membersErr } = await sb.from('team_members').insert(
+    t.members.map(key => ({ user_id: ids[key], team_id: team.id, org_id: orgId, is_active: true }))
+  );
+  if (membersErr) throw membersErr;
+}
+log('teams:', TEAMS.map(t => t.name).join(', '));
 
 log('creating claims…');
 const claimIds = {};
