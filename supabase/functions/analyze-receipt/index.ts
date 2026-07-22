@@ -26,8 +26,10 @@ Fields:
 - description: a short (under 12 words) plain-English summary in your own words — include the merchant/vendor name if visible
 - amount: the TOTAL amount paid, including any tax (numeric, no currency symbol or commas)
 - expense_date: the date on the receipt, converted to ISO format YYYY-MM-DD
+- gst_number: the vendor's GSTIN printed on the receipt (15-character Indian GST number, e.g. 27ABCDE1234F1Z5) — null if not printed
+- gst_amount: the total GST/tax charged (sum of CGST+SGST, or IGST, or a single "GST"/"Tax" line) as a plain number — null if no tax is itemized separately from the total
 
-Give each field a confidence 0-100 (100 = certain, 0 = not found). Always call the receipt_extraction_result tool with your findings.`;
+Give each field a confidence 0-100 (100 = certain, 0 = not found). Never invent a GSTIN or tax amount that isn't legible on the receipt. Always call the receipt_extraction_result tool with your findings.`;
 
 const EXTRACTION_TOOL = {
   type: "function" as const,
@@ -45,6 +47,10 @@ const EXTRACTION_TOOL = {
         amount_confidence: { type: ["integer", "string"] },
         expense_date: { type: ["string", "null"], description: "ISO format YYYY-MM-DD" },
         expense_date_confidence: { type: ["integer", "string"] },
+        gst_number: { type: ["string", "null"], description: "Vendor GSTIN, 15 characters" },
+        gst_number_confidence: { type: ["integer", "string"] },
+        gst_amount: { type: ["number", "string", "null"] },
+        gst_amount_confidence: { type: ["integer", "string"] },
         overall_confidence: { type: ["integer", "string"], description: "0-100 overall read quality" },
       },
       required: [
@@ -52,6 +58,8 @@ const EXTRACTION_TOOL = {
         "description", "description_confidence",
         "amount", "amount_confidence",
         "expense_date", "expense_date_confidence",
+        "gst_number", "gst_number_confidence",
+        "gst_amount", "gst_amount_confidence",
         "overall_confidence",
       ],
     },
@@ -73,6 +81,10 @@ interface ExtractionResult {
   amount_confidence: number;
   expense_date: string | null;
   expense_date_confidence: number;
+  gst_number: string | null;
+  gst_number_confidence: number;
+  gst_amount: number | null;
+  gst_amount_confidence: number;
   overall_confidence: number;
 }
 
@@ -100,6 +112,10 @@ function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
   };
   const rawType = toStr(raw.expense_type);
   const expense_type = rawType && EXPENSE_TYPES.includes(rawType) ? rawType : null;
+  const rawGstNumber = toStr(raw.gst_number)?.toUpperCase().replace(/\s+/g, "") ?? null;
+  // A GSTIN is exactly 15 characters — reject anything that clearly isn't one
+  // rather than surface a malformed value as if it were real.
+  const gst_number = rawGstNumber && rawGstNumber.length === 15 ? rawGstNumber : null;
   return {
     expense_type,
     expense_type_confidence: expense_type ? toInt(raw.expense_type_confidence) : 0,
@@ -109,6 +125,10 @@ function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
     amount_confidence: toInt(raw.amount_confidence),
     expense_date: toStr(raw.expense_date),
     expense_date_confidence: toInt(raw.expense_date_confidence),
+    gst_number,
+    gst_number_confidence: gst_number ? toInt(raw.gst_number_confidence) : 0,
+    gst_amount: toNum(raw.gst_amount),
+    gst_amount_confidence: toInt(raw.gst_amount_confidence),
     overall_confidence: toInt(raw.overall_confidence),
   };
 }

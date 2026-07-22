@@ -198,15 +198,33 @@ const ADVANCES = [
 ];
 
 // ── receipt PNG rendering ────────────────────────────────────────────────────
-const RECEIPT_HTML = ({ vendor, kind, amount, date, desc }) => {
+// Tax breakdown per kind — shared by the rendered receipt image and the
+// gst_number/gst_amount stored on the item, so the two never drift apart
+// (what the AI would read off the image matches what we seed directly).
+function taxBreakdown(kind, amount) {
+  switch (kind) {
+    case 'cab':
+      return { lines: [['Base fare', Math.round(amount * 0.72)], ['Distance + time', Math.round(amount * 0.2)], ['GST (5%)', Math.round(amount * 0.08)]], gst: Math.round(amount * 0.08) };
+    case 'hotel': {
+      const cgst = Math.round(amount * 0.08), sgst = Math.round(amount * 0.08);
+      return { lines: [['Room charges', Math.round(amount * 0.84)], ['CGST (6%)', cgst], ['SGST (6%)', sgst]], gst: cgst + sgst };
+    }
+    case 'flight':
+      return { lines: [['Base fare', Math.round(amount * 0.78)], ['Taxes & fees', Math.round(amount * 0.16)], ['Convenience fee', Math.round(amount * 0.06)]], gst: Math.round(amount * 0.16) };
+    case 'train':
+      return { lines: [['Ticket fare', Math.round(amount * 0.94)], ['Reservation + GST', Math.round(amount * 0.06)]], gst: Math.round(amount * 0.06) };
+    case 'food':
+      return { lines: [['Food & beverages', Math.round(amount * 0.95)], ['GST (5%)', Math.round(amount * 0.05)]], gst: Math.round(amount * 0.05) };
+    default:
+      return { lines: [['Charges', amount]], gst: 0 };
+  }
+}
+
+const randomGstin = () => `27ABCDE${Math.floor(1000 + Math.random() * 9000)}F1Z${Math.floor(Math.random() * 9)}`;
+
+const RECEIPT_HTML = ({ vendor, kind, amount, date, desc, gstin }) => {
   const inr = amount.toLocaleString('en-IN');
-  const lines = {
-    cab:    [['Base fare', Math.round(amount * 0.72)], ['Distance + time', Math.round(amount * 0.2)], ['GST (5%)', Math.round(amount * 0.08)]],
-    hotel:  [['Room charges', Math.round(amount * 0.84)], ['CGST (6%)', Math.round(amount * 0.08)], ['SGST (6%)', Math.round(amount * 0.08)]],
-    flight: [['Base fare', Math.round(amount * 0.78)], ['Taxes & fees', Math.round(amount * 0.16)], ['Convenience fee', Math.round(amount * 0.06)]],
-    train:  [['Ticket fare', Math.round(amount * 0.94)], ['Reservation + GST', Math.round(amount * 0.06)]],
-    food:   [['Food & beverages', Math.round(amount * 0.95)], ['GST (5%)', Math.round(amount * 0.05)]],
-  }[kind] ?? [['Charges', amount]];
+  const { lines } = taxBreakdown(kind, amount);
   const rows = lines.map(([l, v]) => `<tr><td>${l}</td><td class="r">₹${v.toLocaleString('en-IN')}</td></tr>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     body{margin:0;background:#e8e8e4;font-family:'Courier New',monospace;display:flex;justify-content:center;padding:24px}
@@ -220,7 +238,7 @@ const RECEIPT_HTML = ({ vendor, kind, amount, date, desc }) => {
     .foot{text-align:center;font-size:10px;color:#888;margin-top:12px}
   </style></head><body><div class="slip">
     <h1>${vendor}</h1>
-    <div class="sub">GSTIN: 27ABCDE${Math.floor(1000 + Math.random() * 9000)}F1Z${Math.floor(Math.random() * 9)} · Tax Invoice</div>
+    <div class="sub">GSTIN: ${gstin} · Tax Invoice</div>
     <div class="meta">Date: ${date}<br/>${desc}</div>
     <table>${rows}<tr class="tot"><td>TOTAL</td><td class="r">₹${inr}</td></tr></table>
     <div class="foot">** Thank you for your business **</div>
@@ -354,13 +372,18 @@ if (!process.env.SKIP_RECEIPTS) {
     for (const it of withReceipts) {
       const dbItem = dbItems.find(d => d.description === it.desc);
       if (!dbItem) continue;
-      const png = await renderReceipt(page, { ...it.receipt, amount: it.amount, date: it.date, desc: it.desc });
+      const gstin = randomGstin();
+      const { gst } = taxBreakdown(it.receipt.kind, it.amount);
+      const png = await renderReceipt(page, { ...it.receipt, amount: it.amount, date: it.date, desc: it.desc, gstin });
       const path = `${ids[c.owner]}/${claimIds[c.key]}/receipts/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.png`;
       const up = await sb.storage.from('expense-receipts').upload(path, png, { contentType: 'image/png' });
       if (up.error) throw up.error;
       const { data: signed } = await sb.storage.from('expense-receipts').createSignedUrl(path, 60 * 60 * 24 * 365);
       await sb.from('travel_expense_items')
-        .update({ receipt_url: signed?.signedUrl ?? null, receipt_name: `${it.receipt.vendor}.png` })
+        .update({
+          receipt_url: signed?.signedUrl ?? null, receipt_name: `${it.receipt.vendor}.png`,
+          gst_number: gst > 0 ? gstin : null, gst_amount: gst > 0 ? gst : null,
+        })
         .eq('id', dbItem.id);
     }
     log('receipts attached:', c.key);

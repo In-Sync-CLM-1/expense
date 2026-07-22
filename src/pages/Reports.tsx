@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote, Users } from "lucide-react";
+import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote, Users, ReceiptText } from "lucide-react";
 import { format } from "date-fns";
 
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -106,6 +106,23 @@ function useTeamSummary() {
   });
 }
 
+function useGstSummary(claimIds: string[] | undefined) {
+  return useQuery({
+    queryKey: ["gst-summary", claimIds],
+    enabled: !!claimIds && claimIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("travel_expense_items" as never)
+        .select("gst_amount")
+        .in("claim_id", claimIds!)
+        .not("gst_amount", "is", null);
+      if (error) throw error;
+      const rows = (data ?? []) as { gst_amount: number }[];
+      return rows.reduce((sum, r) => sum + Number(r.gst_amount), 0);
+    },
+  });
+}
+
 function useCategoryBreakdown(claimIds: string[] | undefined) {
   return useQuery({
     queryKey: ["category-breakdown", claimIds],
@@ -137,6 +154,11 @@ export default function Reports() {
   const { data: teamRows, isLoading: teamLoading } = useTeamSummary();
   const claimIds = useMemo(() => allClaims?.map((c) => c.id), [allClaims]);
   const { data: categoryRows } = useCategoryBreakdown(claimIds);
+  const recoverableClaimIds = useMemo(
+    () => allClaims?.filter((c) => c.status === "approved" || c.status === "reimbursed").map((c) => c.id),
+    [allClaims]
+  );
+  const { data: recoverableGst } = useGstSummary(recoverableClaimIds);
   const markReimbursed = useMarkReimbursed();
   const [reimbursing, setReimbursing] = useState<string | null>(null);
 
@@ -392,13 +414,18 @@ export default function Reports() {
 
       {/* Org-wide stat cards */}
       {orgStats && (
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           <StatCard icon={<BarChart3 className="h-4 w-4 text-blue-500" />} label="Total Claims" value={orgStats.total} />
           <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending" value={orgStats.pending} highlight={orgStats.pending > 0} />
           <StatCard icon={<CheckCircle className="h-4 w-4 text-green-500" />} label="Approved" value={orgStats.approved} />
           <StatCard icon={<Banknote className="h-4 w-4 text-purple-500" />} label="Reimbursed" value={orgStats.reimbursed} />
           <StatCard icon={<IndianRupee className="h-4 w-4 text-blue-500" />} label="Total Claimed" value={`₹${(orgStats.totalClaimed / 100000).toFixed(1)}L`} />
           <StatCard icon={<IndianRupee className="h-4 w-4 text-green-500" />} label="Total Approved" value={`₹${(orgStats.totalApproved / 100000).toFixed(1)}L`} />
+          <StatCard
+            icon={<ReceiptText className="h-4 w-4 text-emerald-600" />}
+            label="Recoverable GST"
+            value={recoverableGst ? `₹${recoverableGst.toLocaleString("en-IN")}` : "₹0"}
+          />
         </div>
       )}
 

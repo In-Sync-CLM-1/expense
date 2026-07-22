@@ -39,6 +39,8 @@ interface DraftItem {
   receipt_url?: string;
   receipt_name?: string;
   analyzing?: boolean;
+  gst_number?: string;
+  gst_amount?: string;
 }
 
 const emptyItem: DraftItem = {
@@ -107,6 +109,8 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
         description: string | null;
         amount: number | null;
         expense_date: string | null;
+        gst_number: string | null;
+        gst_amount: number | null;
       };
 
       setItems((prev) => {
@@ -119,10 +123,16 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
           description: current.description || result.description || current.description,
           amount: current.amount || (result.amount != null ? String(result.amount) : current.amount),
           expense_date: current.expense_date || result.expense_date || current.expense_date,
+          gst_number: current.gst_number || result.gst_number || current.gst_number,
+          gst_amount: current.gst_amount || (result.gst_amount != null ? String(result.gst_amount) : current.gst_amount),
         };
         return updated;
       });
-      toast.success("Filled in from the receipt — check the details before submitting.");
+      toast.success(
+        result.gst_amount != null
+          ? "Filled in from the receipt, including GST — check before submitting."
+          : "Filled in from the receipt — check the details before submitting."
+      );
     } catch (err) {
       console.error("Receipt analysis failed:", err);
       toast.error("Could not read this receipt automatically. Please fill in the details manually.");
@@ -191,6 +201,8 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
           expense_date: item.expense_date,
           receipt_url: receiptUrl || null,
           receipt_name: receiptName || null,
+          gst_number: item.gst_number || null,
+          gst_amount: item.gst_amount ? parseFloat(item.gst_amount) : null,
         });
       }
 
@@ -408,6 +420,32 @@ export function ExpenseClaimDialog({ open, onOpenChange, userId, orgId }: Expens
                         onChange={(e) => updateItem(index, "description", e.target.value)}
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">GST Amount (optional)</Label>
+                        <Input
+                          type="number"
+                          className="h-9"
+                          placeholder="0.00"
+                          value={item.gst_amount ?? ""}
+                          onChange={(e) => updateItem(index, "gst_amount", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Vendor GSTIN (optional)</Label>
+                        <Input
+                          className="h-9 text-xs"
+                          placeholder="e.g. 27ABCDE1234F1Z5"
+                          value={item.gst_number ?? ""}
+                          onChange={(e) => updateItem(index, "gst_number", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {item.gst_amount && (
+                      <p className="text-xs text-[hsl(142_76%_36%)] flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" /> GST captured — recoverable input tax credit
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}

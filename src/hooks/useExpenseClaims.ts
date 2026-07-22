@@ -13,6 +13,8 @@ export interface ExpenseItem {
   expense_date: string;
   receipt_url?: string | null;
   receipt_name?: string | null;
+  gst_number?: string | null;
+  gst_amount?: number | null;
   approved_amount?: number | null;
   item_status?: string;
   remarks?: string | null;
