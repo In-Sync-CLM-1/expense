@@ -24,3 +24,9 @@ supabase/.temp
 # OS
 .DS_Store
 Thumbs.db
+
+# Promo/demo recording scratch (narration takes, mux intermediates)
+scripts/recordings/
+
+# Remotion render output (regenerate via scripts/gen-promo-timings.mjs + render)
+remotion-promo/out/
