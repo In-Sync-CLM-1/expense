@@ -10,7 +10,7 @@ import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote
 import { format } from "date-fns";
 
 import { useUserPermissions } from "@/hooks/useUserPermissions";
-import { useMarkReimbursed, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { useMarkReimbursed, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
 import {
   exportClaimsToCSV,
   exportMonthlySummaryToCSV,
@@ -19,6 +19,19 @@ import {
   type MonthlyRow,
   type TeamRow,
 } from "@/lib/expenseExport";
+import { EChart, viz, vizAxisLabel, vizSplitLine, vizTooltip } from "@/components/charts/EChart";
+
+// Compact INR in Indian units — matches the org's own ₹…L stat-card convention
+const inr = (n: number): string => {
+  const trim = (s: string) => s.replace(/\.0$/, "");
+  if (n >= 1e7) return `₹${trim((n / 1e7).toFixed(1))} Cr`;
+  if (n >= 1e5) return `₹${trim((n / 1e5).toFixed(1))} L`;
+  if (n >= 1e3) return `₹${trim((n / 1e3).toFixed(1))}k`;
+  return `₹${n.toLocaleString("en-IN")}`;
+};
+
+const expenseTypeLabel = (value: string): string =>
+  EXPENSE_TYPES.find((t) => t.value === value)?.label ?? value;
 
 // ─── Data hooks ───────────────────────────────────────────────────────────────
 
@@ -93,12 +106,37 @@ function useTeamSummary() {
   });
 }
 
+function useCategoryBreakdown(claimIds: string[] | undefined) {
+  return useQuery({
+    queryKey: ["category-breakdown", claimIds],
+    enabled: !!claimIds && claimIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("travel_expense_items" as never)
+        .select("expense_type, amount")
+        .in("claim_id", claimIds!);
+      if (error) throw error;
+
+      const rows = (data ?? []) as { expense_type: string; amount: number }[];
+      const totals = new Map<string, number>();
+      for (const r of rows) {
+        totals.set(r.expense_type, (totals.get(r.expense_type) ?? 0) + Number(r.amount));
+      }
+      return Array.from(totals.entries())
+        .map(([type, total]) => ({ type, total }))
+        .sort((a, b) => b.total - a.total);
+    },
+  });
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Reports() {
   const { permissions } = useUserPermissions();
   const { data: allClaims, isLoading: claimsLoading } = useAllClaims();
   const { data: teamRows, isLoading: teamLoading } = useTeamSummary();
+  const claimIds = useMemo(() => allClaims?.map((c) => c.id), [allClaims]);
+  const { data: categoryRows } = useCategoryBreakdown(claimIds);
   const markReimbursed = useMarkReimbursed();
   const [reimbursing, setReimbursing] = useState<string | null>(null);
 
@@ -166,6 +204,174 @@ export default function Reports() {
     };
   }, [allClaims]);
 
+  // ── Chart options ────────────────────────────────────────────────────────
+  const trendOption = useMemo(() => {
+    if (monthlyRows.length < 2) return null;
+    return {
+      grid: { left: 64, right: 24, top: 10, bottom: 32 },
+      legend: {
+        data: ["Claimed", "Approved"],
+        top: 0,
+        textStyle: { color: viz.inkSecondary, fontSize: 11 },
+        itemWidth: 12,
+        itemHeight: 12,
+      },
+      tooltip: {
+        ...vizTooltip,
+        trigger: "axis",
+        axisPointer: { type: "line", lineStyle: { color: viz.axis, width: 1 } },
+        formatter: (params: Array<{ axisValue: string; seriesName: string; value: number }>) =>
+          `<b>${params[0].axisValue}</b><br/>` +
+          params.map((p) => `${p.seriesName}: ${inr(p.value)}`).join("<br/>"),
+      },
+      xAxis: {
+        type: "category",
+        data: monthlyRows.map((r) => r.month),
+        axisLabel: vizAxisLabel,
+        axisLine: { lineStyle: { color: viz.axis } },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { ...vizAxisLabel, formatter: (v: number) => inr(v) },
+        splitLine: vizSplitLine,
+      },
+      series: [
+        {
+          name: "Claimed",
+          type: "line",
+          data: monthlyRows.map((r) => r.totalClaimed),
+          lineStyle: { color: viz.blue, width: 2 },
+          itemStyle: { color: viz.blue },
+          symbol: "circle",
+          symbolSize: 8,
+        },
+        {
+          name: "Approved",
+          type: "line",
+          data: monthlyRows.map((r) => r.totalApproved),
+          lineStyle: { color: viz.green, width: 2 },
+          itemStyle: { color: viz.green },
+          symbol: "circle",
+          symbolSize: 8,
+        },
+      ],
+    };
+  }, [monthlyRows]);
+
+  const funnelOption = useMemo(() => {
+    if (!orgStats || !allClaims?.length) return null;
+    const stages = [
+      { name: "Submitted", value: allClaims.length },
+      { name: "Approved", value: orgStats.approved + orgStats.reimbursed },
+      { name: "Reimbursed", value: orgStats.reimbursed },
+    ];
+    return {
+      tooltip: {
+        ...vizTooltip,
+        trigger: "item",
+        formatter: (p: { name: string; value: number }) =>
+          `<b>${p.name}</b><br/>${p.value.toLocaleString("en-IN")} claims · ${Math.round((p.value / allClaims.length) * 100)}% of submitted`,
+      },
+      series: [
+        {
+          type: "funnel",
+          sort: "none",
+          left: 10,
+          right: 10,
+          top: 10,
+          bottom: 10,
+          minSize: "24%",
+          maxSize: "94%",
+          gap: 4,
+          itemStyle: { borderColor: viz.surface, borderWidth: 2 },
+          label: {
+            position: "inside",
+            fontSize: 12,
+            formatter: (p: { name: string; value: number }) => `${p.name}  ·  ${p.value.toLocaleString("en-IN")}`,
+          },
+          emphasis: { label: { fontSize: 13 } },
+          data: stages.map((s, i) => ({
+            ...s,
+            itemStyle: { color: viz.ramp3[i] },
+            label: { color: i === 0 ? viz.ink : "#ffffff" },
+          })),
+        },
+      ],
+    };
+  }, [orgStats, allClaims]);
+
+  const categoryOption = useMemo(() => {
+    if (!categoryRows?.length) return null;
+    const top = categoryRows.slice(0, 7);
+    const otherTotal = categoryRows.slice(7).reduce((s, r) => s + r.total, 0);
+    const bars = otherTotal > 0 ? [...top, { type: "other", total: otherTotal }] : top;
+    const sorted = [...bars].sort((a, b) => a.total - b.total); // ascending → largest at top
+    return {
+      grid: { left: 150, right: 24, top: 10, bottom: 10 },
+      tooltip: {
+        ...vizTooltip,
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params: Array<{ name: string; value: number }>) => `<b>${params[0].name}</b><br/>${inr(params[0].value)}`,
+      },
+      xAxis: {
+        type: "value",
+        axisLabel: { ...vizAxisLabel, formatter: (v: number) => inr(v) },
+        splitLine: vizSplitLine,
+      },
+      yAxis: {
+        type: "category",
+        data: sorted.map((r) => (r.type === "other" ? "Other" : expenseTypeLabel(r.type))),
+        axisLabel: vizAxisLabel,
+        axisLine: { lineStyle: { color: viz.axis } },
+        axisTick: { show: false },
+      },
+      series: [
+        {
+          type: "bar",
+          data: sorted.map((r) => r.total),
+          itemStyle: { color: viz.blue, borderRadius: [0, 4, 4, 0] },
+          barMaxWidth: 22,
+        },
+      ],
+    };
+  }, [categoryRows]);
+
+  const teamOption = useMemo(() => {
+    if (!teamRows?.length) return null;
+    const top = [...teamRows].slice(0, 8).sort((a, b) => a.totalClaimed - b.totalClaimed);
+    return {
+      grid: { left: 120, right: 24, top: 10, bottom: 10 },
+      tooltip: {
+        ...vizTooltip,
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params: Array<{ name: string; value: number }>) => `<b>${params[0].name}</b><br/>${inr(params[0].value)}`,
+      },
+      xAxis: {
+        type: "value",
+        axisLabel: { ...vizAxisLabel, formatter: (v: number) => inr(v) },
+        splitLine: vizSplitLine,
+      },
+      yAxis: {
+        type: "category",
+        data: top.map((r) => r.teamName),
+        axisLabel: vizAxisLabel,
+        axisLine: { lineStyle: { color: viz.axis } },
+        axisTick: { show: false },
+      },
+      series: [
+        {
+          type: "bar",
+          data: top.map((r) => r.totalClaimed),
+          itemStyle: { color: viz.violet, borderRadius: [0, 4, 4, 0] },
+          barMaxWidth: 22,
+        },
+      ],
+    };
+  }, [teamRows]);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -196,8 +402,9 @@ export default function Reports() {
         </div>
       )}
 
-      <Tabs defaultValue="monthly">
+      <Tabs defaultValue="overview">
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
           <TabsTrigger value="teams">By Team</TabsTrigger>
           <TabsTrigger value="reimbursement">
@@ -210,6 +417,69 @@ export default function Reports() {
           </TabsTrigger>
           <TabsTrigger value="all-claims">All Claims</TabsTrigger>
         </TabsList>
+
+        {/* ── Overview (charts) ── */}
+        <TabsContent value="overview" className="mt-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Claimed vs Approved, by Month</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {claimsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : trendOption ? (
+                  <EChart option={trendOption} height={280} />
+                ) : (
+                  <div className="text-center py-16 text-sm text-muted-foreground">Not enough data yet</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Claim Funnel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {claimsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : funnelOption ? (
+                  <EChart option={funnelOption} height={280} />
+                ) : (
+                  <div className="text-center py-16 text-sm text-muted-foreground">No data yet</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Spend by Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {categoryOption ? (
+                  <EChart option={categoryOption} height={Math.max(220, (categoryOption.yAxis.data.length || 1) * 34)} />
+                ) : (
+                  <div className="text-center py-16 text-sm text-muted-foreground">No data yet</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Spend by Team</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {teamLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : teamOption ? (
+                  <EChart option={teamOption} height={Math.max(220, (teamOption.yAxis.data.length || 1) * 34)} />
+                ) : (
+                  <div className="text-center py-16 text-sm text-muted-foreground">No team data available</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* ── Monthly Summary ── */}
         <TabsContent value="monthly" className="mt-4">
