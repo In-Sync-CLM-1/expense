@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
   advanceKind,
   type ReconciliationRow,
 } from "@/hooks/useAdvances";
+import { useApprovedUndisbursedRequests, type AdvanceRequest } from "@/hooks/useAdvanceRequests";
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -51,8 +52,10 @@ export default function Advances() {
 
   const { data: reconciliation, isLoading } = useAdvanceReconciliation(currentOrg?.id, canAccess);
   const { data: register } = useAdvancesList(canAccess ? currentOrg?.id : undefined);
+  const { data: undisbursed } = useApprovedUndisbursedRequests(canAccess ? currentOrg?.id : undefined);
   const [search, setSearch] = useState("");
   const [recordOpen, setRecordOpen] = useState(false);
+  const [fundRequest, setFundRequest] = useState<AdvanceRequest | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const deleteAdvance = useDeleteAdvance();
 
@@ -145,6 +148,45 @@ export default function Advances() {
         <KpiCard icon={<IndianRupee className="h-4 w-4 text-green-600" />} label="Payable (overspent)" value={inr(totals.payable)} hint="Company still owes" />
         <KpiCard icon={<Users className="h-4 w-4 text-purple-500" />} label="Employees with Advances" value={String(totals.people)} />
       </div>
+
+      {!!undisbursed?.length && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Approved — awaiting disbursement</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Purpose</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead className="text-right">Amount (₹)</TableHead>
+                    <TableHead className="w-32" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {undisbursed.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>
+                        <div className="font-medium">{r.profiles?.full_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.profiles?.email}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">{r.purpose}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{r.project_name || "—"}</TableCell>
+                      <TableCell className="text-right font-semibold">{inr(Number(r.amount))}</TableCell>
+                      <TableCell>
+                        <Button size="sm" onClick={() => setFundRequest(r)}>Record Disbursement</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="space-y-3">
@@ -255,6 +297,14 @@ export default function Advances() {
         givenBy={user?.id}
       />
 
+      <RecordAdvanceDialog
+        open={!!fundRequest}
+        onOpenChange={(o) => { if (!o) setFundRequest(null); }}
+        orgId={currentOrg?.id}
+        givenBy={user?.id}
+        fromRequest={fundRequest}
+      />
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -324,8 +374,8 @@ function ReconRow({ row }: { row: ReconciliationRow }) {
 }
 
 function RecordAdvanceDialog({
-  open, onOpenChange, orgId, givenBy,
-}: { open: boolean; onOpenChange: (o: boolean) => void; orgId?: string; givenBy?: string }) {
+  open, onOpenChange, orgId, givenBy, fromRequest,
+}: { open: boolean; onOpenChange: (o: boolean) => void; orgId?: string; givenBy?: string; fromRequest?: AdvanceRequest | null }) {
   const { data: members = [] } = useOrgMembers(open ? orgId : undefined);
   const createAdvance = useCreateAdvance();
   const [userId, setUserId] = useState<string | null>(null);
@@ -335,6 +385,14 @@ function RecordAdvanceDialog({
   const [advDate, setAdvDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [note, setNote] = useState("");
   const [empOpen, setEmpOpen] = useState(false);
+
+  useEffect(() => {
+    if (open && fromRequest) {
+      setUserId(fromRequest.user_id);
+      setAmount(String(Number(fromRequest.amount)));
+      setNote(fromRequest.purpose);
+    }
+  }, [open, fromRequest]);
 
   const reset = () => {
     setUserId(null); setClaimId(null); setAmount(""); setNote("");
@@ -355,6 +413,9 @@ function RecordAdvanceDialog({
       advance_date: advDate,
       note: note.trim() || null,
       given_by: givenBy,
+      advance_request_id: fromRequest?.id ?? null,
+      project_id: fromRequest?.project_id ?? null,
+      project_name: fromRequest?.project_name ?? null,
     });
     reset();
     onOpenChange(false);
@@ -364,9 +425,11 @@ function RecordAdvanceDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><HandCoins className="h-5 w-5" /> Record an advance</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><HandCoins className="h-5 w-5" /> {fromRequest ? "Record disbursement" : "Record an advance"}</DialogTitle>
           <DialogDescription>
-            Money given to an employee. Tie it to a claim so the expenses filed against that claim settle against it, or leave blank for a general advance.
+            {fromRequest
+              ? `Approved request for ${fromRequest.profiles?.full_name ?? "this employee"}${fromRequest.project_name ? ` (project: ${fromRequest.project_name})` : ""}. Confirm the amount actually paid out.`
+              : "Money given to an employee. Tie it to a claim so the expenses filed against that claim settle against it, or leave blank for a general advance."}
           </DialogDescription>
         </DialogHeader>
 
@@ -375,7 +438,7 @@ function RecordAdvanceDialog({
             <Label>Employee *</Label>
             <Popover open={empOpen} onOpenChange={setEmpOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className={cn("w-full justify-between font-normal", !selectedEmp && "text-muted-foreground")}>
+                <Button variant="outline" role="combobox" disabled={!!fromRequest} className={cn("w-full justify-between font-normal", !selectedEmp && "text-muted-foreground")}>
                   {selectedEmp ? selectedEmp.full_name : "Select employee"}
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>

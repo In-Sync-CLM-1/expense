@@ -1,6 +1,8 @@
 export interface Permissions {
   isAdmin: boolean;
-  isManager: boolean;
+  isApprover: boolean;
+  isAccounts: boolean;
+  isMaker: boolean;
   canApproveExpenses: boolean;
   canViewReports: boolean;
   canManageUsers: boolean;
@@ -8,28 +10,37 @@ export interface Permissions {
   canManageAdvances: boolean;
 }
 
-export function getRolePermissions(
-  roles: string[],
-  hasSubordinates = false
-): Permissions {
+/**
+ * Maker / Approver / Accounts. Admin is a superuser (keeps every
+ * capability). "manager" is a legacy role value kept for backward
+ * compatibility — it behaves like approver.
+ */
+export function getRolePermissions(roles: string[]): Permissions {
   const isAdmin = roles.includes("admin");
-  const isManager = roles.includes("manager") || isAdmin;
+  const isApprover = isAdmin || roles.includes("approver") || roles.includes("manager");
+  const isAccounts = isAdmin || roles.includes("accounts");
+  const isMaker = !isApprover && !isAccounts;
+
   return {
     isAdmin,
-    isManager,
-    canApproveExpenses: isManager || hasSubordinates,
-    canViewReports: isAdmin,
+    isApprover,
+    isAccounts,
+    isMaker,
+    canApproveExpenses: isApprover,
+    canViewReports: isAdmin || isAccounts,
     canManageUsers: isAdmin,
-    canMarkReimbursed: isAdmin,
-    canManageAdvances: isAdmin,
+    canMarkReimbursed: isAccounts,
+    canManageAdvances: isAccounts,
   };
 }
 
 export function getRoleDisplayName(role: string): string {
   const map: Record<string, string> = {
     admin: "Admin",
+    approver: "Approver",
+    accounts: "Accounts",
+    employee: "Maker",
     manager: "Manager",
-    employee: "Employee",
     platform_admin: "Platform Admin",
   };
   return map[role] || role;
@@ -40,6 +51,7 @@ export function getRoleVariant(
 ): "default" | "secondary" | "outline" | "destructive" {
   if (role === "platform_admin") return "destructive";
   if (role === "admin") return "destructive";
-  if (role === "manager") return "secondary";
+  if (role === "approver" || role === "manager") return "secondary";
+  if (role === "accounts") return "secondary";
   return "outline";
 }

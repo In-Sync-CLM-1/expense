@@ -202,7 +202,7 @@ serve(async (req) => {
       .from("travel_expense_claims")
       .select(`
         *,
-        employee:profiles!travel_expense_claims_user_id_fkey(id, full_name, email, reports_to),
+        employee:profiles!travel_expense_claims_user_id_fkey(id, full_name, email, approver_id),
         approver:profiles!travel_expense_claims_approved_by_fkey(full_name, email)
       `)
       .eq("id", claim_id)
@@ -217,7 +217,7 @@ serve(async (req) => {
     }
 
     const resend = new Resend(resendKey);
-    const employee = claim.employee as { id: string; full_name: string; email: string; reports_to: string | null };
+    const employee = claim.employee as { id: string; full_name: string; email: string; approver_id: string | null };
     const approver = claim.approver as { full_name: string; email: string } | null;
 
     let toEmail: string;
@@ -226,30 +226,30 @@ serve(async (req) => {
     let html: string;
 
     if (event === "submitted") {
-      // Notify manager
-      if (!employee.reports_to) {
-        console.log("No manager set for employee, skipping notification");
+      // Notify the employee's assigned approver
+      if (!employee.approver_id) {
+        console.log("No approver assigned for employee, skipping notification");
         return new Response(
-          JSON.stringify({ skipped: "no manager" }),
+          JSON.stringify({ skipped: "no approver assigned" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const { data: manager } = await supabase
+      const { data: assignedApprover } = await supabase
         .from("profiles")
         .select("full_name, email")
-        .eq("id", employee.reports_to)
+        .eq("id", employee.approver_id)
         .single();
 
-      if (!manager?.email) {
+      if (!assignedApprover?.email) {
         return new Response(
-          JSON.stringify({ skipped: "manager has no email" }),
+          JSON.stringify({ skipped: "approver has no email" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      toEmail = manager.email;
-      toName = manager.full_name ?? "Manager";
+      toEmail = assignedApprover.email;
+      toName = assignedApprover.full_name ?? "Approver";
       subject = `Expense Claim: ${claim.trip_title} — ${employee.full_name} needs your approval`;
       html = submittedEmail(toName, employee.full_name, claim as unknown as Record<string, unknown>);
 

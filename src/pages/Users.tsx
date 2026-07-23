@@ -22,9 +22,11 @@ interface Profile {
   full_name: string | null;
   phone: string | null;
   reports_to: string | null;
+  approver_id: string | null;
   is_active: boolean;
   roles: string[];
   manager_name?: string;
+  approver_name?: string;
 }
 
 function useUsers(orgId?: string) {
@@ -35,7 +37,7 @@ function useUsers(orgId?: string) {
 
       const { data: profiles, error } = await supabase
         .from("profiles" as never)
-        .select("id, email, full_name, phone, reports_to, is_active")
+        .select("id, email, full_name, phone, reports_to, approver_id, is_active")
         .order("full_name");
       if (error) throw error;
 
@@ -62,6 +64,7 @@ function useUsers(orgId?: string) {
           ...p,
           roles: rolesMap.get(p.id) ?? [],
           manager_name: p.reports_to ? (profileMap.get(p.reports_to)?.full_name ?? null) : null,
+          approver_name: p.approver_id ? (profileMap.get(p.approver_id)?.full_name ?? null) : null,
         })) as Profile[];
     },
     enabled: !!orgId,
@@ -136,6 +139,7 @@ export default function Users() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Manager</TableHead>
+                  <TableHead>Approver</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead />
                 </TableRow>
@@ -157,6 +161,9 @@ export default function Users() {
                     <TableCell className="text-sm text-muted-foreground">
                       {user.manager_name ?? "—"}
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {user.approver_name ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={user.is_active ? "default" : "outline"}>
                         {user.is_active ? "Active" : "Inactive"}
@@ -171,7 +178,7 @@ export default function Users() {
                 ))}
                 {!filtered.length && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No users found
                     </TableCell>
                   </TableRow>
@@ -221,6 +228,7 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [role, setRole] = useState(user?.roles[0] ?? "employee");
   const [reportsTo, setReportsTo] = useState(user?.reports_to ?? "none");
+  const [approverId, setApproverId] = useState(user?.approver_id ?? "none");
   const [isActive, setIsActive] = useState(user?.is_active ?? true);
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -235,6 +243,7 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
           body: {
             email, password, full_name: fullName, phone: phone || undefined,
             role, reports_to: reportsTo !== "none" ? reportsTo : undefined,
+            approver_id: approverId !== "none" ? approverId : undefined,
             org_id: orgId,
           },
         });
@@ -245,6 +254,7 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
         await supabase.from("profiles" as never).update({
           full_name: fullName, phone: phone || null,
           reports_to: reportsTo !== "none" ? reportsTo : null,
+          approver_id: approverId !== "none" ? approverId : null,
           is_active: isActive,
         }).eq("id", user.id);
         // Update role in org_memberships
@@ -293,19 +303,35 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="employee">Maker</SelectItem>
+                <SelectItem value="approver">Approver</SelectItem>
+                <SelectItem value="accounts">Accounts</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Reports To (Manager)</Label>
+            <Label>Approver</Label>
+            <Select value={approverId} onValueChange={setApproverId}>
+              <SelectTrigger><SelectValue placeholder="Select approver" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— No approver —</SelectItem>
+                {allUsers.filter((u) => u.roles.includes("approver") || u.roles.includes("admin")).map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.full_name ?? u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Who this maker's claims and advance requests route to for approval.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Reports To (org chart, display only)</Label>
             <Select value={reportsTo} onValueChange={setReportsTo}>
               <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— No manager —</SelectItem>
-                {allUsers.filter((u) => u.roles.includes("manager") || u.roles.includes("admin")).map((u) => (
+                {allUsers.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.full_name ?? u.email}
                   </SelectItem>

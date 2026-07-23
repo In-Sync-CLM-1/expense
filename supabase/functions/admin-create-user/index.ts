@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors-headers.ts";
 
-const ALLOWED_ROLES = ["admin", "manager", "employee"];
+const ALLOWED_ROLES = ["admin", "employee", "approver", "accounts"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,10 +30,10 @@ serve(async (req) => {
     if (authErr || !caller) throw new Error("Unauthorized");
 
     const {
-      email, password, full_name, phone, role, reports_to, org_id,
+      email, password, full_name, phone, role, reports_to, approver_id, org_id,
     }: {
       email: string; password: string; full_name: string;
-      phone?: string; role: string; reports_to?: string; org_id: string;
+      phone?: string; role: string; reports_to?: string; approver_id?: string; org_id: string;
     } = await req.json();
 
     if (!email || !password || !full_name || !role || !org_id) {
@@ -84,6 +84,7 @@ serve(async (req) => {
     const profileUpdate: Record<string, unknown> = {};
     if (phone) profileUpdate.phone = phone;
     if (reports_to) profileUpdate.reports_to = reports_to;
+    if (approver_id) profileUpdate.approver_id = approver_id;
 
     if (Object.keys(profileUpdate).length > 0) {
       await supabaseAdmin.from("profiles").update(profileUpdate).eq("id", newUserId);

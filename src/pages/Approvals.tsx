@@ -15,7 +15,11 @@ import {
   useApproveClaim, useRejectClaim,
   getStatusColor, getStatusLabel, type ExpenseClaim,
 } from "@/hooks/useExpenseClaims";
+import {
+  usePendingAdvanceRequests, useDecidedAdvanceRequests, useDecideAdvanceRequest,
+} from "@/hooks/useAdvanceRequests";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
+import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
 import { exportClaimsToCSV } from "@/lib/expenseExport";
 
 export default function Approvals() {
@@ -23,7 +27,11 @@ export default function Approvals() {
   const { permissions } = useUserPermissions();
 
   const { data: pending, isLoading: pendingLoading } = usePendingApprovals(user?.id);
-  const { data: allClaims, isLoading: allLoading } = useAllApprovals(user?.id, permissions.isAdmin);
+  const { data: allClaims, isLoading: allLoading } = useAllApprovals(user?.id, permissions.isAdmin || permissions.isAccounts);
+
+  const { data: pendingAdvances, isLoading: pendingAdvancesLoading } = usePendingAdvanceRequests(user?.id);
+  const { data: decidedAdvances } = useDecidedAdvanceRequests(user?.id, permissions.isAdmin || permissions.isAccounts);
+  const decideAdvance = useDecideAdvanceRequest();
 
   const [rejectClaim, setRejectClaim] = useState<ExpenseClaim | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -66,78 +74,165 @@ export default function Approvals() {
         <p className="text-muted-foreground">Review and approve team expense claims</p>
       </div>
 
-      <Tabs defaultValue="pending">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <TabsList>
-            <TabsTrigger value="pending" className="flex gap-2">
-              Pending
-              {(pending?.length ?? 0) > 0 && (
-                <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pending?.length}</Badge>
+      <Tabs defaultValue="claims">
+        <TabsList>
+          <TabsTrigger value="claims" className="flex gap-2">
+            Expense Claims
+            {(pending?.length ?? 0) > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pending?.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="advances" className="flex gap-2">
+            Advance Requests
+            {(pendingAdvances?.length ?? 0) > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pendingAdvances?.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Expense Claims */}
+        <TabsContent value="claims" className="mt-4">
+          <Tabs defaultValue="pending">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <TabsList>
+                <TabsTrigger value="pending" className="flex gap-2">
+                  Pending
+                  {(pending?.length ?? 0) > 0 && (
+                    <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pending?.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+
+              {history.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => exportClaimsToCSV(history)}>
+                  <Download className="h-4 w-4 mr-2" /> Export History CSV
+                </Button>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
+            </div>
 
-          {history.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => exportClaimsToCSV(history)}>
-              <Download className="h-4 w-4 mr-2" /> Export History CSV
-            </Button>
-          )}
-        </div>
+            {/* Pending */}
+            <TabsContent value="pending" className="space-y-4 mt-4">
+              {pendingLoading ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : !pending?.length ? (
+                <Card><CardContent className="py-12 text-center">
+                  <CheckCircle className="h-12 w-12 mx-auto text-green-500/30 mb-3" />
+                  <p className="text-muted-foreground">All caught up! No pending approvals.</p>
+                </CardContent></Card>
+              ) : (
+                pending.map((claim) => (
+                  <ApprovalCard
+                    key={claim.id}
+                    claim={claim}
+                    onApprove={() => { setApproveClaim(claim); setApprovedAmount(String(Number(claim.total_amount))); }}
+                    onReject={() => setRejectClaim(claim)}
+                  />
+                ))
+              )}
+            </TabsContent>
 
-        {/* Pending */}
-        <TabsContent value="pending" className="space-y-4 mt-4">
-          {pendingLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
-          ) : !pending?.length ? (
-            <Card><CardContent className="py-12 text-center">
-              <CheckCircle className="h-12 w-12 mx-auto text-green-500/30 mb-3" />
-              <p className="text-muted-foreground">All caught up! No pending approvals.</p>
-            </CardContent></Card>
-          ) : (
-            pending.map((claim) => (
-              <ApprovalCard
-                key={claim.id}
-                claim={claim}
-                onApprove={() => { setApproveClaim(claim); setApprovedAmount(String(Number(claim.total_amount))); }}
-                onReject={() => setRejectClaim(claim)}
-              />
-            ))
-          )}
+            {/* History */}
+            <TabsContent value="history" className="space-y-3 mt-4">
+              {allLoading ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : !history.length ? (
+                <Card><CardContent className="py-12 text-center text-muted-foreground">No history yet</CardContent></Card>
+              ) : (
+                history.map((claim) => (
+                  <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold">{claim.trip_title}</span>
+                        <Badge variant={getStatusColor(claim.status)}>{getStatusLabel(claim.status)}</Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {claim.profiles?.full_name}
+                        {claim.destination && ` · ${claim.destination}`}
+                        {" · "}{format(new Date(claim.trip_start_date), "MMM d")} —{" "}
+                        {format(new Date(claim.trip_end_date), "MMM d, yyyy")}
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="font-bold">₹{Number(claim.total_amount).toLocaleString("en-IN")}</div>
+                      {claim.approved_amount != null && (
+                        <div className="text-xs text-green-600">
+                          Approved: ₹{Number(claim.approved_amount).toLocaleString("en-IN")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        {/* History */}
-        <TabsContent value="history" className="space-y-3 mt-4">
-          {allLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
-          ) : !history.length ? (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">No history yet</CardContent></Card>
-          ) : (
-            history.map((claim) => (
-              <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{claim.trip_title}</span>
-                    <Badge variant={getStatusColor(claim.status)}>{getStatusLabel(claim.status)}</Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {claim.profiles?.full_name}
-                    {claim.destination && ` · ${claim.destination}`}
-                    {" · "}{format(new Date(claim.trip_start_date), "MMM d")} —{" "}
-                    {format(new Date(claim.trip_end_date), "MMM d, yyyy")}
-                  </div>
-                </div>
-                <div className="text-right ml-4">
-                  <div className="font-bold">₹{Number(claim.total_amount).toLocaleString("en-IN")}</div>
-                  {claim.approved_amount != null && (
-                    <div className="text-xs text-green-600">
-                      Approved: ₹{Number(claim.approved_amount).toLocaleString("en-IN")}
+        {/* Advance Requests */}
+        <TabsContent value="advances" className="mt-4">
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending" className="flex gap-2">
+                Pending
+                {(pendingAdvances?.length ?? 0) > 0 && (
+                  <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pendingAdvances?.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending" className="space-y-4 mt-4">
+              {pendingAdvancesLoading ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : !pendingAdvances?.length ? (
+                <Card><CardContent className="py-12 text-center">
+                  <CheckCircle className="h-12 w-12 mx-auto text-green-500/30 mb-3" />
+                  <p className="text-muted-foreground">No pending advance requests.</p>
+                </CardContent></Card>
+              ) : (
+                pendingAdvances.map((req) => (
+                  <AdvanceRequestApprovalCard
+                    key={req.id}
+                    request={req}
+                    deciding={decideAdvance.isPending}
+                    onDecide={(approve, projectId, projectName, comments) => {
+                      if (!user) return;
+                      decideAdvance.mutate({
+                        id: req.id, approve, reviewerId: user.id,
+                        projectId, projectName, comments,
+                      });
+                    }}
+                  />
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-3 mt-4">
+              {!decidedAdvances?.length ? (
+                <Card><CardContent className="py-12 text-center text-muted-foreground">No history yet</CardContent></Card>
+              ) : (
+                decidedAdvances.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold">{req.purpose}</span>
+                        <Badge variant={req.status === "approved" ? "default" : "destructive"}>
+                          {req.status === "approved" ? "Approved" : "Rejected"}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {req.profiles?.full_name}
+                        {req.project_name && ` · ${req.project_name}`}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+                    <div className="text-right ml-4">
+                      <div className="font-bold">₹{Number(req.amount).toLocaleString("en-IN")}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 

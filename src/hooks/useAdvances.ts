@@ -20,6 +20,9 @@ export interface AdvanceRecord {
   advance_date: string;
   note: string | null;
   given_by: string | null;
+  advance_request_id: string | null;
+  project_id: string | null;
+  project_name: string | null;
   created_at: string;
   profiles?: { full_name: string; email: string } | null;
   claim?: { trip_title: string } | null;
@@ -100,6 +103,7 @@ function invalidateAdvanceQueries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["advance-reconciliation"] });
   qc.invalidateQueries({ queryKey: ["my-advance-summary"] });
   qc.invalidateQueries({ queryKey: ["advances-list"] });
+  qc.invalidateQueries({ queryKey: ["advance-requests-undisbursed"] });
 }
 
 export function useCreateAdvance() {
@@ -113,6 +117,9 @@ export function useCreateAdvance() {
       advance_date: string;
       note?: string | null;
       given_by: string;
+      advance_request_id?: string | null;
+      project_id?: string | null;
+      project_name?: string | null;
     }) => {
       const { error } = await supabase.from("expense_advances" as never).insert(advance as never);
       if (error) throw error;

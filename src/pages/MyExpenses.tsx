@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Receipt, Wallet, Clock, CheckCircle2, IndianRupee, Download } from "lucide-react";
+import { Loader2, Plus, Receipt, Wallet, Clock, CheckCircle2, IndianRupee, Download, HandCoins } from "lucide-react";
 import { format } from "date-fns";
 import {
   useCurrentUser, useExpenseClaims, useExpenseClaimDetail,
@@ -11,12 +11,15 @@ import {
 } from "@/hooks/useExpenseClaims";
 import { ExpenseClaimDialog } from "@/components/expenses/ExpenseClaimDialog";
 import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
+import { RequestAdvanceDialog } from "@/components/expenses/RequestAdvanceDialog";
 import { exportClaimsToCSV } from "@/lib/expenseExport";
 import { useOrg } from "@/contexts/OrgContext";
 import { MyAdvanceSummary } from "@/components/expenses/MyAdvanceSummary";
+import { MyAdvanceRequestsList } from "@/components/expenses/MyAdvanceRequestsList";
 
 export default function MyExpenses() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [requestAdvanceOpen, setRequestAdvanceOpen] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const { currentOrg } = useOrg();
@@ -53,6 +56,9 @@ export default function MyExpenses() {
               <Download className="h-4 w-4 mr-2" /> Export CSV
             </Button>
           )}
+          <Button variant="outline" onClick={() => setRequestAdvanceOpen(true)} size="lg">
+            <HandCoins className="mr-2 h-4 w-4" /> Request Advance
+          </Button>
           <Button onClick={() => setCreateOpen(true)} size="lg">
             <Plus className="mr-2 h-4 w-4" /> New Expense Claim
           </Button>
@@ -69,6 +75,7 @@ export default function MyExpenses() {
 
       {/* My advance position (shown only when the employee holds advances) */}
       <MyAdvanceSummary orgId={currentOrg?.id} />
+      <MyAdvanceRequestsList orgId={currentOrg?.id} userId={user?.id} />
 
       {/* List */}
       <Card>
@@ -112,7 +119,10 @@ export default function MyExpenses() {
       </Card>
 
       {user && (
-        <ExpenseClaimDialog open={createOpen} onOpenChange={setCreateOpen} userId={user.id} orgId={currentOrg?.id} />
+        <>
+          <ExpenseClaimDialog open={createOpen} onOpenChange={setCreateOpen} userId={user.id} orgId={currentOrg?.id} />
+          <RequestAdvanceDialog open={requestAdvanceOpen} onOpenChange={setRequestAdvanceOpen} userId={user.id} orgId={currentOrg?.id} />
+        </>
       )}
       <ExpenseClaimDetail
         claim={selectedClaim ?? null}

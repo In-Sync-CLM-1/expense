@@ -267,19 +267,19 @@ export function useExpenseClaimDetail(claimId?: string) {
   });
 }
 
-// ─── Query: pending approvals (manager sees own subordinates) ─────────────────
+// ─── Query: pending approvals (approver sees their assigned makers) ───────────
 
-export function usePendingApprovals(managerId?: string) {
+export function usePendingApprovals(approverId?: string) {
   return useQuery({
-    queryKey: ["expense-approvals-pending", managerId],
+    queryKey: ["expense-approvals-pending", approverId],
     queryFn: async () => {
-      if (!managerId) return [];
+      if (!approverId) return [];
 
-      // Get subordinate user IDs
+      // Get maker user IDs assigned to this approver
       const { data: subs } = await supabase
         .from("profiles" as never)
         .select("id")
-        .eq("reports_to", managerId);
+        .eq("approver_id", approverId);
 
       const subIds = (subs ?? []).map((s: { id: string }) => s.id);
       if (subIds.length === 0) return [];
@@ -308,7 +308,7 @@ export function usePendingApprovals(managerId?: string) {
         ),
       })) as ExpenseClaim[];
     },
-    enabled: !!managerId,
+    enabled: !!approverId,
   });
 }
 
@@ -331,7 +331,7 @@ export function useAllApprovals(userId?: string, isAdmin = false) {
         const { data: subs } = await supabase
           .from("profiles" as never)
           .select("id")
-          .eq("reports_to", userId);
+          .eq("approver_id", userId);
         const subIds = (subs ?? []).map((s: { id: string }) => s.id);
         if (subIds.length === 0) return [];
         query = query.in("user_id", subIds);

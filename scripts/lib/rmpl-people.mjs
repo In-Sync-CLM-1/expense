@@ -54,6 +54,7 @@ export const PEOPLE = [
   ['2bbcf27f-9a03-4c5b-bee7-f6ad2facd069', 'Vikash Kumar', 'vikash.kumar@redefinemarcom.in', '8882640247', 'fa3ea3ec-f80e-49cc-9cd7-ef5e78d7581b'],
   ['1466fe42-6e79-4c6a-8aa3-ee8c0849c106', 'Yash Arya', 'yash.arya@redefinemarcom.in', '9315964884', 'fa3ea3ec-f80e-49cc-9cd7-ef5e78d7581b'],
   ['314ea2f5-3d7e-47eb-b6b4-45e923e1b9db', 'Yogeshwar Somani', 'yogeshwar.somani@redefinemarcom.in', '9953336939', 'ae3869ea-b6fc-41e7-8596-f0a90772cc99'],
+  ['522d9cb4-ada4-45ea-896b-1c42381e231c', 'Vikhyat Shah', 'vikhyat.shah@redefine.in', '8955591969', '2fe1bb0f-879c-4b11-9c31-ce7eee8a2be9'],
 ];
 
 export const ADMIN_EMAILS = new Set(['accounts@redefine.in', 'vendor.pay@redefine.in']);
