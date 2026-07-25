@@ -33,7 +33,11 @@ export async function sendEmail(payload: EmailPayload): Promise<{ id: string }> 
   return data;
 }
 
-export function otpEmailHtml(otp: string, name: string): string {
+export function otpEmailHtml(otp: string, name: string, purpose: "signup" | "reset" = "signup"): string {
+  const heading = purpose === "reset" ? "Reset your password" : "Verify your email";
+  const intro = purpose === "reset"
+    ? `Hi ${name}, use the OTP below to reset your password.`
+    : `Hi ${name}, use the OTP below to complete your registration.`;
   return `
 <!DOCTYPE html>
 <html>
@@ -46,9 +50,9 @@ export function otpEmailHtml(otp: string, name: string): string {
           <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Expense Claims</h1>
         </td></tr>
         <tr><td style="padding:32px;">
-          <h2 style="margin:0 0 12px;color:#18181b;font-size:20px;">Verify your email</h2>
+          <h2 style="margin:0 0 12px;color:#18181b;font-size:20px;">${heading}</h2>
           <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 8px;">
-            Hi ${name}, use the OTP below to complete your registration.
+            ${intro}
           </p>
           <p style="color:#a1a1aa;font-size:13px;margin:0 0 24px;">This code expires in 5 minutes.</p>
           <div style="background:#f4f4f5;border-radius:10px;padding:20px;text-align:center;margin:0 0 24px;">
