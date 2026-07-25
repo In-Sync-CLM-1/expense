@@ -16,14 +16,16 @@ export interface Organization {
 
 export interface OrgMembership {
   org_id: string;
-  role: "admin" | "manager" | "employee";
+  role: string;
+  roles: string[];
   is_active: boolean;
   organization: Organization;
 }
 
 interface OrgContextType {
   currentOrg: Organization | null;
-  orgRole: "admin" | "manager" | "employee" | null;
+  orgRole: string | null;
+  orgRoles: string[];
   orgs: OrgMembership[];
   isPlatformAdmin: boolean;
   loading: boolean;
@@ -34,6 +36,7 @@ interface OrgContextType {
 const OrgContext = createContext<OrgContextType>({
   currentOrg: null,
   orgRole: null,
+  orgRoles: [],
   orgs: [],
   isPlatformAdmin: false,
   loading: true,
@@ -49,7 +52,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const { user, isPlatformAdmin, loading: authLoading } = useAuth();
   const [orgs, setOrgs] = useState<OrgMembership[]>([]);
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
-  const [orgRole, setOrgRole] = useState<"admin" | "manager" | "employee" | null>(null);
+  const [orgRole, setOrgRole] = useState<string | null>(null);
+  const [orgRoles, setOrgRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userIdRef = useRef<string | null>(null);
@@ -66,6 +70,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setOrgs([]);
       setCurrentOrg(null);
       setOrgRole(null);
+      setOrgRoles([]);
       setLoading(false);
       return;
     }
@@ -74,18 +79,20 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
     const { data: memberships } = await supabase
       .from("org_memberships" as never)
-      .select("org_id, role, is_active, organizations(*)")
+      .select("org_id, role, roles, is_active, organizations(*)")
       .eq("user_id", uid)
       .eq("is_active", true);
 
     const mapped: OrgMembership[] = ((memberships ?? []) as Array<{
       org_id: string;
-      role: "admin" | "manager" | "employee";
+      role: string;
+      roles: string[] | null;
       is_active: boolean;
       organizations: Organization;
     }>).map((m) => ({
       org_id: m.org_id,
       role: m.role,
+      roles: m.roles && m.roles.length ? m.roles : [m.role],
       is_active: m.is_active,
       organization: m.organizations,
     }));
@@ -98,13 +105,16 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (saved) {
       setCurrentOrg(saved.organization);
       setOrgRole(saved.role);
+      setOrgRoles(saved.roles);
     } else if (mapped.length > 0) {
       setCurrentOrg(mapped[0].organization);
       setOrgRole(mapped[0].role);
+      setOrgRoles(mapped[0].roles);
       localStorage.setItem(LS_KEY, mapped[0].org_id);
     } else {
       setCurrentOrg(null);
       setOrgRole(null);
+      setOrgRoles([]);
     }
 
     setLoading(false);
@@ -119,6 +129,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (membership) {
       setCurrentOrg(membership.organization);
       setOrgRole(membership.role);
+      setOrgRoles(membership.roles);
       localStorage.setItem(LS_KEY, orgId);
     }
   };
@@ -127,6 +138,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     <OrgContext.Provider value={{
       currentOrg,
       orgRole,
+      orgRoles,
       orgs,
       isPlatformAdmin,
       loading,

@@ -9,9 +9,9 @@ export function useUserPermissions(): {
   isLoading: boolean;
 } {
   const { user, loading: authLoading } = useAuth();
-  const { orgRole, loading: orgLoading } = useOrg();
+  const { orgRole, orgRoles, loading: orgLoading } = useOrg();
 
-  const roles = orgRole ? [orgRole] : [];
+  const roles = orgRoles && orgRoles.length ? orgRoles : orgRole ? [orgRole] : [];
   const permissions = getRolePermissions(roles);
   const isLoading = authLoading || orgLoading;
 
