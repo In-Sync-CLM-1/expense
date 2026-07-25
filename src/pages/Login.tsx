@@ -36,8 +36,24 @@ function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "otp" | "done">("email");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSessionId, setForgotSessionId] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotChannels, setForgotChannels] = useState<{ whatsapp: boolean; email: boolean }>({ whatsapp: false, email: false });
+  const [forgotMasked, setForgotMasked] = useState<{ email: string; phone: string | null }>({ email: "", phone: null });
+  const [newPassword, setNewPassword] = useState("");
+
+  const resetForgotState = () => {
+    setForgotStep("email");
+    setForgotEmail("");
+    setForgotOtp("");
+    setForgotSessionId("");
+    setNewPassword("");
+    setForgotChannels({ whatsapp: false, email: false });
+    setForgotMasked({ email: "", phone: null });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,18 +70,46 @@ function SignIn() {
     }
   };
 
-  const handleForgotPassword = async () => {
+  const handleSendResetOtp = async () => {
     if (!forgotEmail) { toast.error("Enter your email"); return; }
     setForgotLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) throw error;
-      toast.success("Password reset email sent!");
-      setForgotOpen(false);
+      const res = await supabase.functions.invoke("send-reset-otp", { body: { email: forgotEmail } });
+      if (res.error) throw res.error;
+      const data = res.data as {
+        success: boolean; sessionId: string;
+        channels: { whatsapp: boolean; email: boolean };
+        maskedEmail: string; maskedPhone: string | null;
+      };
+      setForgotSessionId(data.sessionId);
+      setForgotChannels(data.channels);
+      setForgotMasked({ email: data.maskedEmail, phone: data.maskedPhone });
+      setForgotStep("otp");
+      const sent = [];
+      if (data.channels.whatsapp) sent.push("WhatsApp");
+      if (data.channels.email) sent.push("email");
+      toast.success(`OTP sent via ${sent.join(" & ")}`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to send reset email");
+      toast.error(await extractFnError(err, "Failed to send OTP"));
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (forgotOtp.length !== 6) { toast.error("Enter the 6-digit OTP"); return; }
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    setForgotLoading(true);
+    try {
+      const res = await supabase.functions.invoke("reset-password-with-otp", {
+        body: { sessionId: forgotSessionId, otp: forgotOtp, newPassword },
+      });
+      if (res.error) throw res.error;
+      const data = res.data as { success?: boolean; error?: string };
+      if (!data.success) throw new Error(data.error || "Failed to reset password");
+      setForgotStep("done");
+    } catch (err: unknown) {
+      toast.error(await extractFnError(err, "Failed to reset password"));
     } finally {
       setForgotLoading(false);
     }
@@ -121,32 +165,126 @@ function SignIn() {
         </Button>
       </form>
 
-      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+      <Dialog
+        open={forgotOpen}
+        onOpenChange={(o) => { setForgotOpen(o); if (!o) resetForgotState(); }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Enter your email address and we'll send you a link to reset your password.
-            </p>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                placeholder="you@company.com"
-              />
+
+          {forgotStep === "email" && (
+            <>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Enter your email and we'll send a one-time code to your email and WhatsApp.
+                </p>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSendResetOtp(); }}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setForgotOpen(false)}>Cancel</Button>
+                <Button onClick={handleSendResetOtp} disabled={forgotLoading}>
+                  {forgotLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Send OTP
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {forgotStep === "otp" && (
+            <div className="space-y-5">
+              <div className="flex gap-3">
+                <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${forgotChannels.whatsapp ? "border-green-300 bg-green-50 text-green-700" : "border-muted text-muted-foreground"}`}>
+                  <MessageSquare className="h-3.5 w-3.5" /> WhatsApp {forgotChannels.whatsapp ? "✓" : "—"}
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${forgotChannels.email ? "border-blue-300 bg-blue-50 text-blue-700" : "border-muted text-muted-foreground"}`}>
+                  <Mail className="h-3.5 w-3.5" /> Email {forgotChannels.email ? "✓" : "—"}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Enter the 6-digit OTP</p>
+                <p className="text-xs text-muted-foreground">
+                  Sent to <span className="font-medium">{forgotMasked.email}</span>
+                  {forgotMasked.phone && <> and <span className="font-medium">{forgotMasked.phone}</span></>}
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={forgotOtp} onChange={setForgotOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <div className="space-y-2">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleResetPassword}
+                disabled={forgotLoading || forgotOtp.length !== 6 || newPassword.length < 8}
+              >
+                {forgotLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Reset Password
+              </Button>
+
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => { setForgotStep("email"); setForgotOtp(""); }}
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={handleSendResetOtp}
+                  disabled={forgotLoading}
+                >
+                  Resend OTP
+                </button>
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForgotOpen(false)}>Cancel</Button>
-            <Button onClick={handleForgotPassword} disabled={forgotLoading}>
-              {forgotLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Send Reset Link
-            </Button>
-          </DialogFooter>
+          )}
+
+          {forgotStep === "done" && (
+            <div className="text-center space-y-4 py-4">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <div>
+                <p className="font-semibold text-lg">Password updated!</p>
+                <p className="text-sm text-muted-foreground mt-1">You can now sign in with your new password.</p>
+              </div>
+              <Button className="w-full" onClick={() => { setForgotOpen(false); resetForgotState(); }}>
+                Back to Sign In
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
