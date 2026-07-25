@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrg } from "@/contexts/OrgContext";
+import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,19 @@ export function AppLayout() {
   const { user, isPlatformAdmin, loading: authLoading, signOut } = useAuth();
   const { currentOrg, orgs, orgRole, loading: orgLoading, switchOrg } = useOrg();
 
+  const { data: mustChangePassword, isLoading: mcpLoading, refetch: refetchMcp } = useQuery({
+    queryKey: ["must-change-password", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles" as never)
+        .select("must_change_password")
+        .eq("id", user!.id)
+        .single();
+      return !!(data as { must_change_password?: boolean } | null)?.must_change_password;
+    },
+    enabled: !!user && !isPlatformAdmin,
+  });
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate("/login", { replace: true }); return; }
@@ -25,7 +41,13 @@ export function AppLayout() {
     if (!orgLoading && !currentOrg) { navigate("/create-org", { replace: true }); return; }
   }, [authLoading, orgLoading, user, isPlatformAdmin, currentOrg, navigate]);
 
-  if (authLoading || orgLoading) {
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Signed out");
+    navigate("/login");
+  };
+
+  if (authLoading || orgLoading || (!!user && !isPlatformAdmin && mcpLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
@@ -33,11 +55,17 @@ export function AppLayout() {
     );
   }
 
-  const handleLogout = async () => {
-    await signOut();
-    toast.success("Signed out");
-    navigate("/login");
-  };
+  // Mandatory: users flagged for a forced reset must set a new password first.
+  if (user && !isPlatformAdmin && mustChangePassword) {
+    return (
+      <ForcePasswordChange
+        userId={user.id}
+        email={user.email}
+        onDone={() => refetchMcp()}
+        onSignOut={handleLogout}
+      />
+    );
+  }
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "U";
   const userRoles = orgRole ? [orgRole] : [];
