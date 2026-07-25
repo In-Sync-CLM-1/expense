@@ -30,17 +30,20 @@ serve(async (req) => {
     if (authErr || !caller) throw new Error("Unauthorized");
 
     const {
-      email, password, full_name, phone, role, reports_to, approver_id, org_id,
+      email, password, full_name, phone, role, roles, reports_to, approver_id, org_id,
     }: {
       email: string; password: string; full_name: string;
-      phone?: string; role: string; reports_to?: string; approver_id?: string; org_id: string;
+      phone?: string; role: string; roles?: string[]; reports_to?: string; approver_id?: string; org_id: string;
     } = await req.json();
 
     if (!email || !password || !full_name || !role || !org_id) {
       throw new Error("email, password, full_name, role, and org_id are required");
     }
-    if (!ALLOWED_ROLES.includes(role)) {
-      throw new Error(`role must be one of: ${ALLOWED_ROLES.join(", ")}`);
+    const roleList = roles && roles.length ? roles : [role];
+    for (const r of roleList) {
+      if (!ALLOWED_ROLES.includes(r)) {
+        throw new Error(`role must be one of: ${ALLOWED_ROLES.join(", ")}`);
+      }
     }
 
     // Caller must be org admin OR platform admin
@@ -54,10 +57,10 @@ serve(async (req) => {
     if (!isPlatformAdmin.data) {
       const orgMembership = await supabaseAdmin
         .from("org_memberships")
-        .select("role")
+        .select("roles")
         .eq("user_id", caller.id)
         .eq("org_id", org_id)
-        .eq("role", "admin")
+        .contains("roles", ["admin"])
         .eq("is_active", true)
         .maybeSingle();
       if (!orgMembership.data) throw new Error("Insufficient permissions");
@@ -77,7 +80,7 @@ serve(async (req) => {
     // Create org membership
     const { error: memErr } = await supabaseAdmin
       .from("org_memberships")
-      .insert({ org_id, user_id: newUserId, role });
+      .insert({ org_id, user_id: newUserId, role, roles: roleList });
     if (memErr) throw new Error("Failed to create org membership: " + memErr.message);
 
     // Update profile with phone and reports_to

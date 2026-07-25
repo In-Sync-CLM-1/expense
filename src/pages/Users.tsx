@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Search, Users as UsersIcon, Edit, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -44,13 +45,13 @@ function useUsers(orgId?: string) {
       // Get roles from org_memberships
       const { data: memberships } = await supabase
         .from("org_memberships" as never)
-        .select("user_id, role")
+        .select("user_id, role, roles")
         .eq("org_id", orgId)
         .eq("is_active", true);
 
       const rolesMap = new Map<string, string[]>();
-      for (const m of (memberships ?? []) as { user_id: string; role: string }[]) {
-        rolesMap.set(m.user_id, [m.role]);
+      for (const m of (memberships ?? []) as { user_id: string; role: string; roles: string[] | null }[]) {
+        rolesMap.set(m.user_id, m.roles && m.roles.length ? m.roles : [m.role]);
       }
 
       const profileList = (profiles ?? []) as Omit<Profile, "roles" | "manager_name">[];
@@ -226,23 +227,28 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
   const [fullName, setFullName] = useState(user?.full_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState(user?.roles[0] ?? "employee");
+  const [roles, setRoles] = useState<string[]>(user?.roles?.length ? user.roles : ["employee"]);
   const [reportsTo, setReportsTo] = useState(user?.reports_to ?? "none");
   const [approverId, setApproverId] = useState(user?.approver_id ?? "none");
   const [isActive, setIsActive] = useState(user?.is_active ?? true);
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const toggleRole = (r: string) =>
+    setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
+
   const handleSave = async () => {
-    if (!fullName || !email || !role) { toast.error("Name, email, and role are required"); return; }
+    if (!fullName || !email || roles.length === 0) { toast.error("Name, email, and at least one role are required"); return; }
     setSaving(true);
     try {
+      // representative role (most-privileged) for callers/columns that expect a single value
+      const primaryRole = ["admin", "accounts", "approver", "manager", "employee"].find((r) => roles.includes(r)) ?? "employee";
       if (mode === "create") {
         if (!password) { toast.error("Password is required for new users"); setSaving(false); return; }
         const { error } = await supabase.functions.invoke("admin-create-user", {
           body: {
             email, password, full_name: fullName, phone: phone || undefined,
-            role, reports_to: reportsTo !== "none" ? reportsTo : undefined,
+            role: primaryRole, roles, reports_to: reportsTo !== "none" ? reportsTo : undefined,
             approver_id: approverId !== "none" ? approverId : undefined,
             org_id: orgId,
           },
@@ -257,9 +263,9 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
           approver_id: approverId !== "none" ? approverId : null,
           is_active: isActive,
         }).eq("id", user.id);
-        // Update role in org_memberships
+        // Update roles in org_memberships (trigger keeps the scalar `role` in sync)
         await supabase.from("org_memberships" as never)
-          .update({ role })
+          .update({ roles })
           .eq("user_id", user.id)
           .eq("org_id", orgId);
         toast.success("User updated!");
@@ -299,16 +305,24 @@ function UserFormDialog({ open, onOpenChange, allUsers, mode, user, orgId }: Use
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
           </div>
           <div className="space-y-2">
-            <Label>Role *</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">Maker</SelectItem>
-                <SelectItem value="approver">Approver</SelectItem>
-                <SelectItem value="accounts">Accounts</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Roles *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: "employee", label: "Maker" },
+                { value: "approver", label: "Approver" },
+                { value: "accounts", label: "Accounts" },
+                { value: "admin", label: "Admin" },
+              ].map((r) => (
+                <label
+                  key={r.value}
+                  className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50"
+                >
+                  <Checkbox checked={roles.includes(r.value)} onCheckedChange={() => toggleRole(r.value)} />
+                  {r.label}
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">A person can hold several roles at once — e.g. Maker + Approver + Accounts.</p>
           </div>
           <div className="space-y-2">
             <Label>Approver</Label>
