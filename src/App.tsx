@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -38,6 +38,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// The landing page is a public marketing page with no auth check of its own,
+// so a visitor arriving with an already-valid session (e.g. the RMPL OPM
+// SSO handoff, or just a returning user with a live session) saw the
+// marketing page instead of their dashboard. Redirect once session state
+// has loaded.
+function RootRoute() {
+  const { session, loading } = useAuth();
+  if (loading) return null;
+  if (session) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -50,7 +62,7 @@ export default function App() {
               <BrowserRouter>
                 <Routes>
                   {/* Public */}
-                  <Route path="/" element={<Landing />} />
+                  <Route path="/" element={<RootRoute />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/create-org" element={<CreateOrg />} />
