@@ -44,7 +44,7 @@ export default function PlatformLayout() {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
-      <aside className="w-60 shrink-0 border-r border-border bg-sidebar flex flex-col">
+      <aside className="w-60 shrink-0 self-start sticky top-0 h-screen border-r border-border bg-sidebar flex flex-col">
         {/* Header */}
         <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 mb-1">
@@ -62,7 +62,7 @@ export default function PlatformLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
