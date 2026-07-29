@@ -19,6 +19,11 @@ export interface ExpenseItem {
   item_status?: string;
   remarks?: string | null;
   created_at?: string;
+  // Silent fraud-review signals — surfaced only to approvers/accounts, never to the submitter.
+  ai_declared_amount?: number | null;
+  flag_amount_mismatch?: boolean;
+  flag_tampering?: boolean;
+  flag_tampering_reason?: string | null;
 }
 
 export interface ProofFile {

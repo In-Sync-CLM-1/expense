@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote, Users, ReceiptText } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote, Users, ReceiptText, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -123,6 +124,41 @@ function useGstSummary(claimIds: string[] | undefined) {
   });
 }
 
+// Silent fraud-review flags, keyed by claim — surfaced to accounts here at
+// the final payout checkpoint, never shown to the submitting employee.
+function useFlaggedClaims(claimIds: string[] | undefined) {
+  return useQuery({
+    queryKey: ["flagged-claims", claimIds],
+    enabled: !!claimIds && claimIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("travel_expense_items" as never)
+        .select("claim_id, amount, ai_declared_amount, flag_amount_mismatch, flag_tampering, flag_tampering_reason")
+        .in("claim_id", claimIds!)
+        .or("flag_amount_mismatch.eq.true,flag_tampering.eq.true");
+      if (error) throw error;
+      const rows = (data ?? []) as {
+        claim_id: string; amount: number; ai_declared_amount: number | null;
+        flag_amount_mismatch: boolean; flag_tampering: boolean; flag_tampering_reason: string | null;
+      }[];
+      const map = new Map<string, string[]>();
+      for (const r of rows) {
+        const reasons = map.get(r.claim_id) ?? [];
+        if (r.flag_tampering) {
+          reasons.push(r.flag_tampering_reason || "Receipt image shows possible signs of alteration.");
+        }
+        if (r.flag_amount_mismatch && r.ai_declared_amount != null) {
+          reasons.push(
+            `Claimed ₹${Number(r.amount).toLocaleString("en-IN")} but the receipt reading was ₹${Number(r.ai_declared_amount).toLocaleString("en-IN")}.`
+          );
+        }
+        map.set(r.claim_id, reasons);
+      }
+      return map;
+    },
+  });
+}
+
 function useCategoryBreakdown(claimIds: string[] | undefined) {
   return useQuery({
     queryKey: ["category-breakdown", claimIds],
@@ -154,6 +190,7 @@ export default function Reports() {
   const { data: teamRows, isLoading: teamLoading } = useTeamSummary();
   const claimIds = useMemo(() => allClaims?.map((c) => c.id), [allClaims]);
   const { data: categoryRows } = useCategoryBreakdown(claimIds);
+  const { data: flaggedClaims } = useFlaggedClaims(claimIds);
   const recoverableClaimIds = useMemo(
     () => allClaims?.filter((c) => c.status === "approved" || c.status === "reimbursed").map((c) => c.id),
     [allClaims]
@@ -670,9 +707,23 @@ export default function Reports() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pendingReimbursement.map((claim) => (
+                    {pendingReimbursement.map((claim) => {
+                      const flagReasons = flaggedClaims?.get(claim.id);
+                      return (
                       <TableRow key={claim.id}>
-                        <TableCell className="font-medium">{claim.profiles?.full_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {claim.profiles?.full_name}
+                          {flagReasons && flagReasons.length > 0 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="ml-1.5 inline-flex items-center text-destructive align-middle">
+                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">{flagReasons.join(" ")}</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
                         <TableCell>{claim.trip_title}</TableCell>
                         <TableCell>{claim.destination ?? "—"}</TableCell>
                         <TableCell>
@@ -697,7 +748,8 @@ export default function Reports() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

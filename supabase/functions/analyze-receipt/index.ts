@@ -29,6 +29,10 @@ Fields:
 - gst_number: the vendor's GSTIN printed on the receipt (15-character Indian GST number, e.g. 27ABCDE1234F1Z5) — null if not printed
 - gst_amount: the total GST/tax charged (sum of CGST+SGST, or IGST, or a single "GST"/"Tax" line) as a plain number — null if no tax is itemized separately from the total
 
+If you are looking at an actual image (not plain text), also inspect the amount for signs of physical alteration: a digit drawn in different ink or a different pen stroke than the rest of the printed/written total, correction fluid or tape, a redrawn or overwritten digit, misaligned or doubled strokes, a digit that looks added after the fact. This is for fraud review — be conservative and only flag genuine visual evidence, not just poor print quality or a blurry photo. If you were only given text with no image, always return tampering_suspected: false.
+- tampering_suspected: true only if you see concrete visual evidence the amount was altered after the receipt was printed/written
+- tampering_reason: one short plain-English sentence describing exactly what looks altered — null if tampering_suspected is false
+
 Give each field a confidence 0-100 (100 = certain, 0 = not found). Never invent a GSTIN or tax amount that isn't legible on the receipt. Always call the receipt_extraction_result tool with your findings.`;
 
 const EXTRACTION_TOOL = {
@@ -52,6 +56,8 @@ const EXTRACTION_TOOL = {
         gst_amount: { type: ["number", "string", "null"] },
         gst_amount_confidence: { type: ["integer", "string"] },
         overall_confidence: { type: ["integer", "string"], description: "0-100 overall read quality" },
+        tampering_suspected: { type: "boolean", description: "True only with concrete visual evidence of an altered amount" },
+        tampering_reason: { type: ["string", "null"], description: "Short plain-English description of what looks altered" },
       },
       required: [
         "expense_type", "expense_type_confidence",
@@ -61,6 +67,7 @@ const EXTRACTION_TOOL = {
         "gst_number", "gst_number_confidence",
         "gst_amount", "gst_amount_confidence",
         "overall_confidence",
+        "tampering_suspected", "tampering_reason",
       ],
     },
   },
@@ -86,6 +93,8 @@ interface ExtractionResult {
   gst_amount: number | null;
   gst_amount_confidence: number;
   overall_confidence: number;
+  tampering_suspected: boolean;
+  tampering_reason: string | null;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -116,6 +125,7 @@ function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
   // A GSTIN is exactly 15 characters — reject anything that clearly isn't one
   // rather than surface a malformed value as if it were real.
   const gst_number = rawGstNumber && rawGstNumber.length === 15 ? rawGstNumber : null;
+  const tampering_suspected = raw.tampering_suspected === true || raw.tampering_suspected === "true";
   return {
     expense_type,
     expense_type_confidence: expense_type ? toInt(raw.expense_type_confidence) : 0,
@@ -130,6 +140,8 @@ function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
     gst_amount: toNum(raw.gst_amount),
     gst_amount_confidence: toInt(raw.gst_amount_confidence),
     overall_confidence: toInt(raw.overall_confidence),
+    tampering_suspected,
+    tampering_reason: tampering_suspected ? toStr(raw.tampering_reason)?.slice(0, 300) ?? null : null,
   };
 }
 

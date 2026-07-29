@@ -3,9 +3,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Calendar, MapPin, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { User, Calendar, MapPin, ExternalLink, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { getExpenseTypeLabel, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { getExpenseTypeLabel, type ExpenseClaim, type ExpenseItem } from "@/hooks/useExpenseClaims";
+
+function itemFlagReason(item: ExpenseItem): string | null {
+  const reasons: string[] = [];
+  if (item.flag_tampering) {
+    reasons.push(item.flag_tampering_reason || "Receipt image shows possible signs of alteration.");
+  }
+  if (item.flag_amount_mismatch && item.ai_declared_amount != null) {
+    reasons.push(
+      `Claimed ₹${Number(item.amount).toLocaleString("en-IN")} but the receipt reading was ₹${Number(item.ai_declared_amount).toLocaleString("en-IN")}.`
+    );
+  }
+  return reasons.length ? reasons.join(" ") : null;
+}
 
 interface Props {
   claim: ExpenseClaim;
@@ -64,29 +78,42 @@ export function ApprovalCard({ claim, onApprove, onReject }: Props) {
 
         {expanded && claim.items && (
           <div className="space-y-1.5 pl-3 border-l-2 border-muted">
-            {claim.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                <div>
-                  <Badge variant="outline" className="text-xs mr-2">
-                    {getExpenseTypeLabel(item.expense_type)}
-                  </Badge>
-                  <span className="text-muted-foreground">{item.description}</span>
-                  {item.receipt_url && (
-                    <a
-                      href={item.receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-500 inline-flex items-center gap-0.5"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
+            {claim.items.map((item) => {
+              const flagReason = itemFlagReason(item);
+              return (
+                <div key={item.id} className="flex items-center justify-between text-sm py-1">
+                  <div>
+                    <Badge variant="outline" className="text-xs mr-2">
+                      {getExpenseTypeLabel(item.expense_type)}
+                    </Badge>
+                    <span className="text-muted-foreground">{item.description}</span>
+                    {item.receipt_url && (
+                      <a
+                        href={item.receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-blue-500 inline-flex items-center gap-0.5"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                    {flagReason && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="ml-2 inline-flex items-center gap-1 text-destructive align-middle">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">{flagReason}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <span className="font-medium whitespace-nowrap">
+                    ₹{Number(item.amount).toLocaleString("en-IN")}
+                  </span>
                 </div>
-                <span className="font-medium whitespace-nowrap">
-                  ₹{Number(item.amount).toLocaleString("en-IN")}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

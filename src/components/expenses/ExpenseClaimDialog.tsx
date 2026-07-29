@@ -69,6 +69,13 @@ interface DraftItem {
   analyzing?: boolean;
   gst_number?: string;
   gst_amount?: string;
+  // Silent fraud-review signals — never rendered in this dialog. Captured
+  // from the AI's reading of the receipt so the submitted amount can be
+  // compared against it for the approver/accounts, without telling the
+  // employee this check exists.
+  ai_declared_amount?: number | null;
+  tampering_suspected?: boolean;
+  tampering_reason?: string | null;
 }
 
 const emptyItem: DraftItem = {
@@ -150,6 +157,8 @@ export function ExpenseClaimDialog({
         expense_date: string | null;
         gst_number: string | null;
         gst_amount: number | null;
+        tampering_suspected?: boolean;
+        tampering_reason?: string | null;
       };
 
       setItems((prev) => {
@@ -174,6 +183,12 @@ export function ExpenseClaimDialog({
             (result.gst_amount != null
               ? String(result.gst_amount)
               : current.gst_amount),
+          // Hidden signals for the approver/accounts fraud review — always
+          // refreshed to whatever this receipt image actually shows, never
+          // surfaced anywhere in this dialog.
+          ai_declared_amount: result.amount,
+          tampering_suspected: !!result.tampering_suspected,
+          tampering_reason: result.tampering_reason ?? null,
         };
         return updated;
       });
@@ -254,15 +269,27 @@ export function ExpenseClaimDialog({
           receiptName = item.receipt_file.name;
         }
 
+        const submittedAmount = parseFloat(item.amount);
+        const aiAmount = item.ai_declared_amount ?? null;
+        // Only flag inflation past the AI's reading — not a downward
+        // correction, and not noise from rounding.
+        const amountMismatchTolerance = aiAmount != null ? Math.max(1, aiAmount * 0.02) : 0;
+        const flagAmountMismatch =
+          aiAmount != null && submittedAmount > aiAmount + amountMismatchTolerance;
+
         claimItems.push({
           expense_type: item.expense_type,
           description: item.description,
-          amount: parseFloat(item.amount),
+          amount: submittedAmount,
           expense_date: item.expense_date,
           receipt_url: receiptUrl || null,
           receipt_name: receiptName || null,
           gst_number: item.gst_number || null,
           gst_amount: item.gst_amount ? parseFloat(item.gst_amount) : null,
+          ai_declared_amount: aiAmount,
+          flag_amount_mismatch: flagAmountMismatch,
+          flag_tampering: !!item.tampering_suspected,
+          flag_tampering_reason: item.tampering_reason ?? null,
         });
       }
 
