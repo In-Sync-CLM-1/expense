@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmail, otpEmailHtml } from "../_shared/resend.ts";
+import { getNotificationSettings } from "../_shared/notificationSettings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,15 @@ serve(async (req) => {
       return json({ error: "This account is inactive. Contact your admin." }, 403);
     }
 
+    // Resolve one of the account's orgs (for org-specific sender settings, if any).
+    const { data: membership } = await supabase
+      .from("org_memberships")
+      .select("org_id")
+      .eq("user_id", profileRow.id)
+      .limit(1)
+      .maybeSingle();
+    const settings = await getNotificationSettings(supabase, membership?.org_id ?? null);
+
     // Rate limit: max 5 reset OTPs per email per hour
     const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
     const { count } = await supabase
@@ -88,11 +98,11 @@ serve(async (req) => {
     // ── WhatsApp via Exotel ──
     let waSent = false;
     if (phoneValid) {
-      const exotelSid = Deno.env.get("EXOTEL_ACCOUNT_SID")!;
-      const exotelApiKey = Deno.env.get("EXOTEL_API_KEY")!;
-      const exotelApiToken = Deno.env.get("EXOTEL_API_TOKEN")!;
-      const exotelDomain = Deno.env.get("EXOTEL_SUBDOMAIN") || "api.exotel.com";
-      const fromNumber = Deno.env.get("EXOTEL_SENDER_NUMBER") || "919540178308";
+      const exotelSid = settings.exotel_account_sid;
+      const exotelApiKey = settings.exotel_api_key;
+      const exotelApiToken = settings.exotel_api_token;
+      const exotelDomain = settings.exotel_subdomain;
+      const fromNumber = settings.exotel_sender_number;
       const toPhone = `91${cleanPhone}`;
       const exotelUrl = `https://${exotelApiKey}:${exotelApiToken}@${exotelDomain}/v2/accounts/${exotelSid}/messages`;
       const waPayload = {
@@ -131,11 +141,15 @@ serve(async (req) => {
     // ── Email via Resend ──
     let emailSent = false;
     try {
-      await sendEmail({
-        to: normalizedEmail,
-        subject: `${otpCode} is your Expense Claims password reset code`,
-        html: otpEmailHtml(otpCode, profileRow.full_name || normalizedEmail.split("@")[0], "reset"),
-      });
+      await sendEmail(
+        {
+          to: normalizedEmail,
+          subject: `${otpCode} is your Expense Claims password reset code`,
+          html: otpEmailHtml(otpCode, profileRow.full_name || normalizedEmail.split("@")[0], "reset"),
+        },
+        settings.resend_api_key,
+        settings.from_email,
+      );
       emailSent = true;
     } catch (err) {
       console.error("Resend error:", err);
