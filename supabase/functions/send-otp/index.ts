@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmail, otpEmailHtml } from "../_shared/resend.ts";
+import { getNotificationSettings } from "../_shared/notificationSettings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,12 +68,15 @@ serve(async (req) => {
 
     const sessionId = otpRecord.session_id;
 
+    // No org exists yet at signup time — always resolves to the global default.
+    const settings = await getNotificationSettings(supabase, null);
+
     // ── Send WhatsApp via Exotel ──────────────────────────────────────────
-    const exotelSid      = Deno.env.get("EXOTEL_ACCOUNT_SID")!;
-    const exotelApiKey   = Deno.env.get("EXOTEL_API_KEY")!;
-    const exotelApiToken = Deno.env.get("EXOTEL_API_TOKEN")!;
-    const exotelDomain   = Deno.env.get("EXOTEL_SUBDOMAIN") || "api.exotel.com";
-    const fromNumber     = Deno.env.get("EXOTEL_SENDER_NUMBER") || "919540178308";
+    const exotelSid      = settings.exotel_account_sid;
+    const exotelApiKey   = settings.exotel_api_key;
+    const exotelApiToken = settings.exotel_api_token;
+    const exotelDomain   = settings.exotel_subdomain;
+    const fromNumber     = settings.exotel_sender_number;
 
     const toPhone = `91${cleanPhone}`;
     const exotelUrl = `https://${exotelApiKey}:${exotelApiToken}@${exotelDomain}/v2/accounts/${exotelSid}/messages`;
@@ -128,11 +132,15 @@ serve(async (req) => {
     // ── Send Email via Resend ─────────────────────────────────────────────
     let emailSent = false;
     try {
-      await sendEmail({
-        to: email,
-        subject: `${otpCode} is your Expense Claims OTP`,
-        html: otpEmailHtml(otpCode, name || email.split("@")[0]),
-      });
+      await sendEmail(
+        {
+          to: email,
+          subject: `${otpCode} is your Expense Claims OTP`,
+          html: otpEmailHtml(otpCode, name || email.split("@")[0]),
+        },
+        settings.resend_api_key,
+        settings.from_email,
+      );
       emailSent = true;
     } catch (err) {
       console.error("Resend error:", err);

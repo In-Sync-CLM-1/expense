@@ -6,20 +6,21 @@ export interface EmailPayload {
   html: string;
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<{ id: string }> {
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
-
-  const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "expenses@in-sync.co.in";
+export async function sendEmail(
+  payload: EmailPayload,
+  resendApiKey: string,
+  fromEmail: string,
+): Promise<{ id: string }> {
+  if (!resendApiKey) throw new Error("Resend API key is not configured");
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: `Expense Claims <${FROM_EMAIL}>`,
+      from: fromEmail,
       to: [payload.to],
       subject: payload.subject,
       html: payload.html,

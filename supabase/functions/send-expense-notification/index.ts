@@ -10,17 +10,16 @@
  * Environment variables required:
  *   SUPABASE_URL           – project URL
  *   SUPABASE_SERVICE_ROLE_KEY – service-role key (read full claim + profiles)
- *   RESEND_API_KEY         – Resend.com API key
- *   FROM_EMAIL             – sender address (e.g. "Expense System <no-reply@yourcompany.com>")
+ *
+ * Resend API key and from-address come from org_notification_settings
+ * (per-org row, falling back to the default) — see _shared/notificationSettings.ts.
  */
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { corsHeaders } from "../_shared/cors-headers.ts";
-
-const FROM_EMAIL =
-  Deno.env.get("FROM_EMAIL") ?? "Expense Claims <no-reply@example.com>";
+import { getNotificationSettings } from "../_shared/notificationSettings.ts";
 
 // ─── Email HTML templates ─────────────────────────────────────────────────────
 
@@ -179,9 +178,6 @@ serve(async (req) => {
   }
 
   try {
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendKey) throw new Error("RESEND_API_KEY not set");
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -216,7 +212,8 @@ serve(async (req) => {
       );
     }
 
-    const resend = new Resend(resendKey);
+    const settings = await getNotificationSettings(supabase, (claim as { org_id?: string | null }).org_id ?? null);
+    const resend = new Resend(settings.resend_api_key);
     const employee = claim.employee as { id: string; full_name: string; email: string; approver_id: string | null };
     const approver = claim.approver as { full_name: string; email: string } | null;
 
@@ -287,7 +284,7 @@ serve(async (req) => {
     }
 
     const result = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: settings.from_email,
       to: [toEmail],
       subject,
       html,

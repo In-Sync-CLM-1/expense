@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors-headers.ts";
-
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "Expense Claims <no-reply@example.com>";
+import { getNotificationSettings } from "../_shared/notificationSettings.ts";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -57,9 +56,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendKey) throw new Error("RESEND_API_KEY not set");
-
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -73,12 +69,14 @@ Deno.serve(async (req) => {
 
     const { data: request, error: reqErr } = await admin
       .from("expense_advance_requests")
-      .select("id, amount, purpose, employee_remarks, user_id")
+      .select("id, amount, purpose, employee_remarks, user_id, org_id")
       .eq("id", advance_request_id)
       .single();
     if (reqErr || !request) {
       return jsonResponse({ error: "Advance request not found" }, 404);
     }
+
+    const settings = await getNotificationSettings(admin, request.org_id ?? null);
 
     const { data: maker } = await admin
       .from("profiles")
@@ -116,9 +114,9 @@ Deno.serve(async (req) => {
 
     const resend = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.resend_api_key}` },
       body: JSON.stringify({
-        from: FROM_EMAIL,
+        from: settings.from_email,
         to: [approver.email],
         subject: `Advance request from ${makerName} — ${amountText}`,
         html: baseTemplate("New advance request awaiting your approval", body),
