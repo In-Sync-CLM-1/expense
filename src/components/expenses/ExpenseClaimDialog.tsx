@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,8 @@ import {
   FileText,
   Image as ImageIcon,
   Sparkles,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +40,10 @@ import {
   MAX_PROOF_FILES,
   type ExpenseItem,
 } from "@/hooks/useExpenseClaims";
+import {
+  downloadExpenseImportTemplate,
+  parseExpenseImportFile,
+} from "@/lib/expenseExcelImport";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -99,6 +105,8 @@ export function ExpenseClaimDialog({
   });
   const [items, setItems] = useState<DraftItem[]>([{ ...emptyItem }]);
   const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const createClaim = useCreateClaim();
 
@@ -209,6 +217,53 @@ export function ExpenseClaimDialog({
           updated[index] = { ...updated[index], analyzing: false };
         return updated;
       });
+    }
+  };
+
+  const handleImportExcel = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const { items: parsed, errors } = await parseExpenseImportFile(file);
+
+      if (parsed.length > 0) {
+        const imported: DraftItem[] = parsed.map((row) => ({
+          expense_type: row.expense_type,
+          description: row.description,
+          amount: row.amount,
+          expense_date: row.expense_date,
+          gst_amount: row.gst_amount || undefined,
+          gst_number: row.gst_number || undefined,
+        }));
+
+        setItems((prev) => {
+          const prevIsBlank =
+            prev.length === 1 &&
+            !prev[0].expense_type &&
+            !prev[0].amount &&
+            !prev[0].expense_date &&
+            !prev[0].description;
+          return prevIsBlank ? imported : [...prev, ...imported];
+        });
+      }
+
+      if (errors.length > 0) {
+        toast.error(
+          parsed.length > 0
+            ? `Imported ${parsed.length} row(s). ${errors.length} row(s) skipped — ${errors.slice(0, 3).join(" ")}`
+            : `Could not import any rows — ${errors.slice(0, 3).join(" ")}`,
+          { duration: 8000 },
+        );
+      } else if (parsed.length > 0) {
+        toast.success(`Imported ${parsed.length} expense(s) from the file — add receipts below before submitting.`);
+      } else {
+        toast.error("No expense rows found in that file.");
+      }
+    } catch (err) {
+      console.error("Excel import failed:", err);
+      toast.error("Could not read that file. Please use the downloadable template.");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -551,9 +606,40 @@ export function ExpenseClaimDialog({
             ))}
           </div>
 
-          <Button variant="outline" onClick={addItem} className="w-full">
-            <Plus className="h-4 w-4 mr-2" /> Add Another Expense
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={addItem}>
+              <Plus className="h-4 w-4 mr-2" /> Add Another Expense
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importing}
+            >
+              {importing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+              )}
+              Import from Excel
+            </Button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => {
+                handleImportExcel(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={downloadExpenseImportTemplate}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 flex items-center gap-1"
+          >
+            <Download className="h-3 w-3" /> Download Excel template
+          </button>
 
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <span className="font-medium">Total Amount</span>
