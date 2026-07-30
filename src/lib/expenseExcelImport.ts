@@ -1,6 +1,10 @@
-import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { EXPENSE_TYPES } from "@/hooks/useExpenseClaims";
+
+// `xlsx` is a heavy library (pushes the main bundle past the PWA precache
+// limit) — load it on demand, only when someone actually imports/downloads
+// a template, instead of shipping it to every visitor.
+const loadXLSX = () => import("xlsx");
 
 // ─── Template (download) ───────────────────────────────────────────────────
 
@@ -13,7 +17,8 @@ const TEMPLATE_HEADERS = [
   "Vendor GSTIN (optional)",
 ];
 
-export function downloadExpenseImportTemplate() {
+export async function downloadExpenseImportTemplate() {
+  const XLSX = await loadXLSX();
   const example = [
     "2026-07-15",
     "Cab / Taxi",
@@ -99,6 +104,7 @@ function resolveAmount(raw: unknown): number | null {
 }
 
 export async function parseExpenseImportFile(file: File): Promise<ExpenseImportResult> {
+  const XLSX = await loadXLSX();
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const sheetName = wb.SheetNames[0];
