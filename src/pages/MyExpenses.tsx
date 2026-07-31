@@ -9,16 +9,16 @@ import {
   useCurrentUser, useExpenseClaims, useExpenseClaimDetail,
   getStatusColor, getStatusLabel, type ExpenseClaim,
 } from "@/hooks/useExpenseClaims";
-import { ExpenseClaimDialog } from "@/components/expenses/ExpenseClaimDialog";
 import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
 import { RequestAdvanceDialog } from "@/components/expenses/RequestAdvanceDialog";
 import { exportClaimsToCSV } from "@/lib/expenseExport";
 import { useOrg } from "@/contexts/OrgContext";
 import { MyAdvanceSummary } from "@/components/expenses/MyAdvanceSummary";
 import { MyAdvanceRequestsList } from "@/components/expenses/MyAdvanceRequestsList";
+import { useExpenseClaimDialog } from "@/contexts/ExpenseClaimDialogContext";
 
 export default function MyExpenses() {
-  const [createOpen, setCreateOpen] = useState(false);
+  const { openNewClaim } = useExpenseClaimDialog();
   const [requestAdvanceOpen, setRequestAdvanceOpen] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -59,7 +59,7 @@ export default function MyExpenses() {
           <Button variant="outline" onClick={() => setRequestAdvanceOpen(true)} size="lg">
             <HandCoins className="mr-2 h-4 w-4" /> Request Advance
           </Button>
-          <Button onClick={() => setCreateOpen(true)} size="lg">
+          <Button onClick={openNewClaim} size="lg">
             <Plus className="mr-2 h-4 w-4" /> New Expense Claim
           </Button>
         </div>
@@ -104,7 +104,7 @@ export default function MyExpenses() {
             <div className="text-center py-12">
               <Receipt className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">No expense claims found</p>
-              <Button variant="outline" className="mt-4" onClick={() => setCreateOpen(true)}>
+              <Button variant="outline" className="mt-4" onClick={openNewClaim}>
                 <Plus className="h-4 w-4 mr-2" /> Create your first claim
               </Button>
             </div>
@@ -119,10 +119,7 @@ export default function MyExpenses() {
       </Card>
 
       {user && (
-        <>
-          <ExpenseClaimDialog open={createOpen} onOpenChange={setCreateOpen} userId={user.id} orgId={currentOrg?.id} />
-          <RequestAdvanceDialog open={requestAdvanceOpen} onOpenChange={setRequestAdvanceOpen} userId={user.id} orgId={currentOrg?.id} />
-        </>
+        <RequestAdvanceDialog open={requestAdvanceOpen} onOpenChange={setRequestAdvanceOpen} userId={user.id} orgId={currentOrg?.id} />
       )}
       <ExpenseClaimDetail
         claim={selectedClaim ?? null}

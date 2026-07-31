@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User as UserIcon, Building2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { ExpenseClaimDialogProvider } from "@/contexts/ExpenseClaimDialogContext";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ export function AppLayout() {
   const userRoles = orgRole ? [orgRole] : [];
 
   return (
+    <ExpenseClaimDialogProvider>
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar user={user} userRoles={userRoles} onLogout={handleLogout} currentOrg={currentOrg} />
@@ -135,5 +137,6 @@ export function AppLayout() {
         </main>
       </div>
     </SidebarProvider>
+    </ExpenseClaimDialogProvider>
   );
 }
