@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -109,12 +109,63 @@ export function ExpenseClaimDialog({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const createClaim = useCreateClaim();
+  const draftKey = `expense-claim-draft:${userId}`;
 
   const resetForm = () => {
     setTripData({ trip_title: "", destination: "", purpose: "" });
     setItems([{ ...emptyItem }]);
     setProofFiles([]);
+    localStorage.removeItem(draftKey);
   };
+
+  // Restore an in-progress claim after a real page reload — a backgrounded
+  // tab can get discarded by the browser (Chrome's Memory Saver, mobile OS
+  // memory pressure) while switching away to check something like a
+  // spreadsheet, which wipes all in-memory state including this form.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!saved) return;
+      const draft = JSON.parse(saved) as { tripData: typeof tripData; items: DraftItem[] };
+      const hasContent =
+        draft.tripData?.trip_title ||
+        draft.items?.some((i) => i.expense_type || i.description || i.amount || i.expense_date);
+      if (!hasContent) return;
+      setTripData(draft.tripData);
+      setItems(draft.items.length > 0 ? draft.items : [{ ...emptyItem }]);
+      onOpenChange(true);
+      toast.info("Restored your in-progress claim — please re-attach any receipt files.");
+    } catch {
+      // corrupt/unreadable draft — ignore
+    }
+    // Runs once per user; draftKey only changes if the signed-in user does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // Auto-save as they type. File objects can't be persisted to localStorage,
+  // so receipts and the AI fraud-review signals tied to them are dropped —
+  // those get recomputed if the receipt is re-attached after a restore.
+  useEffect(() => {
+    const hasContent =
+      tripData.trip_title ||
+      items.some((i) => i.expense_type || i.description || i.amount || i.expense_date);
+    if (!hasContent) {
+      localStorage.removeItem(draftKey);
+      return;
+    }
+    const strippedItems = items.map((item) => {
+      const { receipt_file, analyzing, ai_declared_amount, tampering_suspected, tampering_reason, ...rest } = item;
+      return rest;
+    });
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ tripData, items: strippedItems }));
+      } catch {
+        // storage full/unavailable — not worth surfacing to the user
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [tripData, items, draftKey]);
 
   const addItem = () => setItems([...items, { ...emptyItem }]);
 
