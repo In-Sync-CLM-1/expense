@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, ShieldCheck, Download } from "lucide-react";
+import { Loader2, CheckCircle, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import {
@@ -20,7 +20,6 @@ import {
 } from "@/hooks/useAdvanceRequests";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
-import { exportClaimsToCSV } from "@/lib/expenseExport";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
@@ -103,12 +102,6 @@ export default function Approvals() {
                 </TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
-
-              {history.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => exportClaimsToCSV(history)}>
-                  <Download className="h-4 w-4 mr-2" /> Export History CSV
-                </Button>
-              )}
             </div>
 
             {/* Pending */}

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote, Users, ReceiptText, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
@@ -198,6 +200,24 @@ export default function Reports() {
   const { data: recoverableGst } = useGstSummary(recoverableClaimIds);
   const markReimbursed = useMarkReimbursed();
   const [reimbursing, setReimbursing] = useState<string | null>(null);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+
+  // Claims restricted to the From/To range, for export only — the on-screen
+  // lists and charts stay org-wide. Dated by submission (fallback: created),
+  // same field the Monthly Summary groups by.
+  const claimsForExport = useMemo(() => {
+    if (!allClaims) return [];
+    if (!exportFrom && !exportTo) return allClaims;
+    return allClaims.filter((c) => {
+      const dateStr = c.submitted_at ?? c.created_at;
+      if (!dateStr) return false;
+      const d = dateStr.slice(0, 10); // "yyyy-MM-dd" — safe to compare lexically
+      if (exportFrom && d < exportFrom) return false;
+      if (exportTo && d > exportTo) return false;
+      return true;
+    });
+  }, [allClaims, exportFrom, exportTo]);
 
   if (!permissions.canViewReports) {
     return (
@@ -440,13 +460,37 @@ export default function Reports() {
           </h1>
           <p className="text-muted-foreground">Organisation-wide expense analytics and exports</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => allClaims && exportClaimsToCSV(allClaims)}
-          disabled={!allClaims?.length}
-        >
-          <Download className="h-4 w-4 mr-2" /> Export All Claims
-        </Button>
+        <div className="flex items-end gap-2 flex-wrap">
+          <div className="space-y-1">
+            <Label htmlFor="export-from" className="text-xs text-muted-foreground">From</Label>
+            <Input
+              id="export-from"
+              type="date"
+              className="h-9 w-[150px]"
+              value={exportFrom}
+              max={exportTo || undefined}
+              onChange={(e) => setExportFrom(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="export-to" className="text-xs text-muted-foreground">To</Label>
+            <Input
+              id="export-to"
+              type="date"
+              className="h-9 w-[150px]"
+              value={exportTo}
+              min={exportFrom || undefined}
+              onChange={(e) => setExportTo(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => exportClaimsToCSV(claimsForExport)}
+            disabled={!claimsForExport.length}
+          >
+            <Download className="h-4 w-4 mr-2" /> Export All Claims
+          </Button>
+        </div>
       </div>
 
       {/* Org-wide stat cards */}
@@ -764,10 +808,10 @@ export default function Reports() {
               <CardTitle>All Claims</CardTitle>
               <Button
                 variant="outline" size="sm"
-                onClick={() => allClaims && exportClaimsToCSV(allClaims)}
-                disabled={!allClaims?.length}
+                onClick={() => exportClaimsToCSV(claimsForExport)}
+                disabled={!claimsForExport.length}
               >
-                <Download className="h-4 w-4 mr-2" /> Export CSV
+                <Download className="h-4 w-4 mr-2" /> Export CSV{(exportFrom || exportTo) ? " (filtered)" : ""}
               </Button>
             </CardHeader>
             <CardContent>
