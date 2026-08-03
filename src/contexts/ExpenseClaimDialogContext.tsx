@@ -2,6 +2,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrg } from "@/contexts/OrgContext";
 import { ExpenseClaimDialog } from "@/components/expenses/ExpenseClaimDialog";
+import { setClaimDialogOpen } from "@/lib/pwaUpdateGate";
 
 interface ExpenseClaimDialogContextValue {
   openNewClaim: () => void;
@@ -14,9 +15,14 @@ const ExpenseClaimDialogContext = createContext<ExpenseClaimDialogContextValue |
 // whichever page opened it — means navigating to another page no longer
 // unmounts it and discards what the employee was filling in.
 export function ExpenseClaimDialogProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const { user } = useAuth();
   const { currentOrg } = useOrg();
+
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    setClaimDialogOpen(next);
+  };
 
   return (
     <ExpenseClaimDialogContext.Provider value={{ openNewClaim: () => setOpen(true) }}>
