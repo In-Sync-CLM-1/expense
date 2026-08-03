@@ -11,7 +11,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt" (not "autoUpdate") — we drive the reload ourselves in
+      // main.tsx so it can be deferred while the New Expense Claim dialog
+      // is open, see src/lib/pwaUpdateGate.ts.
+      registerType: "prompt",
       injectRegister: false,
       includeAssets: ["favicon.png"],
       manifest: {
