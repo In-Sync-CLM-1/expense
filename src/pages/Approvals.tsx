@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, ShieldCheck } from "lucide-react";
+import { Loader2, CheckCircle, ShieldCheck, IndianRupee } from "lucide-react";
 import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { useOrg } from "@/contexts/OrgContext";
+import { isRmplOrg } from "@/lib/rmplOrg";
 import {
   useCurrentUser, usePendingApprovals, useAllApprovals,
   useApproveClaim, useRejectClaim,
@@ -18,12 +20,20 @@ import {
 import {
   usePendingAdvanceRequests, useDecidedAdvanceRequests, useDecideAdvanceRequest,
 } from "@/hooks/useAdvanceRequests";
+import {
+  usePendingProjectOwnerApprovals, useAllProjectExpenseClaims,
+  useApproveProjectExpenseClaim, useRejectProjectExpenseClaim, useMarkProjectExpenseReimbursed,
+  getProjectExpenseStatusColor, getProjectExpenseStatusLabel, type ProjectExpenseClaim,
+} from "@/hooks/useProjectExpenses";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
+import { ProjectExpenseApprovalCard } from "@/components/expenses/ProjectExpenseApprovalCard";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
   const { permissions } = useUserPermissions();
+  const { currentOrg } = useOrg();
+  const isRmpl = isRmplOrg(currentOrg?.id);
 
   const { data: pending, isLoading: pendingLoading } = usePendingApprovals(user?.id);
   const { data: allClaims, isLoading: allLoading } = useAllApprovals(user?.id, permissions.isAdmin || permissions.isAccounts);
@@ -32,10 +42,19 @@ export default function Approvals() {
   const { data: decidedAdvances } = useDecidedAdvanceRequests(user?.id, permissions.isAdmin || permissions.isAccounts);
   const decideAdvance = useDecideAdvanceRequest();
 
+  const { data: pendingProjectExpenses, isLoading: pendingProjectExpensesLoading } = usePendingProjectOwnerApprovals(user?.id);
+  const { data: allProjectExpenses } = useAllProjectExpenseClaims(currentOrg?.id, isRmpl);
+  const approveProjectExpense = useApproveProjectExpenseClaim();
+  const rejectProjectExpense = useRejectProjectExpenseClaim();
+  const markProjectExpenseReimbursed = useMarkProjectExpenseReimbursed();
+
   const [rejectClaim, setRejectClaim] = useState<ExpenseClaim | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approveClaim, setApproveClaim] = useState<ExpenseClaim | null>(null);
   const [approvedAmount, setApprovedAmount] = useState("");
+
+  const [rejectPE, setRejectPE] = useState<ProjectExpenseClaim | null>(null);
+  const [rejectPEReason, setRejectPEReason] = useState("");
 
   const approveMutation = useApproveClaim();
   const rejectMutation = useRejectClaim();
@@ -64,6 +83,18 @@ export default function Approvals() {
 
   const history = allClaims?.filter((c) => c.status !== "submitted") ?? [];
 
+  const handleRejectPE = async () => {
+    if (!rejectPE || !user || !rejectPEReason.trim()) return;
+    await rejectProjectExpense.mutateAsync({ claimId: rejectPE.id, approverId: user.id, reason: rejectPEReason });
+    setRejectPE(null);
+    setRejectPEReason("");
+  };
+
+  const projectExpenseHistory = allProjectExpenses?.filter((c) => c.status !== "submitted" && c.status !== "approved") ?? [];
+  const awaitingPayment = (permissions.isAdmin || permissions.isAccounts)
+    ? allProjectExpenses?.filter((c) => c.status === "approved") ?? []
+    : [];
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
@@ -87,6 +118,16 @@ export default function Approvals() {
               <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{pendingAdvances?.length}</Badge>
             )}
           </TabsTrigger>
+          {isRmpl && (
+            <TabsTrigger value="projectExpenses" className="flex gap-2">
+              Project Expenses
+              {((pendingProjectExpenses?.length ?? 0) + awaitingPayment.length) > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">
+                  {(pendingProjectExpenses?.length ?? 0) + awaitingPayment.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Expense Claims */}
@@ -227,7 +268,120 @@ export default function Approvals() {
             </TabsContent>
           </Tabs>
         </TabsContent>
+
+        {/* Project Expenses (RMPL only) */}
+        {isRmpl && (
+          <TabsContent value="projectExpenses" className="mt-4 space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Pending your approval as Project Owner</h3>
+              {pendingProjectExpensesLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : !pendingProjectExpenses?.length ? (
+                <Card><CardContent className="py-8 text-center">
+                  <CheckCircle className="h-10 w-10 mx-auto text-green-500/30 mb-2" />
+                  <p className="text-muted-foreground text-sm">No project expenses awaiting your approval.</p>
+                </CardContent></Card>
+              ) : (
+                <div className="space-y-4">
+                  {pendingProjectExpenses.map((claim) => (
+                    <ProjectExpenseApprovalCard
+                      key={claim.id}
+                      claim={claim}
+                      onApprove={() => user && approveProjectExpense.mutate({ claimId: claim.id, approverId: user.id })}
+                      onReject={() => setRejectPE(claim)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {(permissions.isAdmin || permissions.isAccounts) && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                  <IndianRupee className="h-4 w-4" /> Approved — awaiting payment
+                </h3>
+                {!awaitingPayment.length ? (
+                  <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nothing awaiting payment right now.</CardContent></Card>
+                ) : (
+                  <div className="space-y-3">
+                    {awaitingPayment.map((claim) => (
+                      <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">{claim.project_name}</span>
+                            <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {claim.traveller_name}{claim.project_number && ` · ${claim.project_number}`} · Approved by {claim.project_owner_name}
+                          </div>
+                        </div>
+                        <div className="text-right ml-4 flex items-center gap-3">
+                          <div className="font-bold">₹{Number(claim.actual_expense_total).toLocaleString("en-IN")}</div>
+                          <Button
+                            size="sm"
+                            disabled={markProjectExpenseReimbursed.isPending}
+                            onClick={() => user && markProjectExpenseReimbursed.mutate({ claimId: claim.id, reimbursedBy: user.id })}
+                          >
+                            Mark Paid
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <h3 className="text-sm font-semibold mb-2">History</h3>
+              {!projectExpenseHistory.length ? (
+                <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">No history yet</CardContent></Card>
+              ) : (
+                <div className="space-y-3">
+                  {projectExpenseHistory.map((claim) => (
+                    <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{claim.project_name}</span>
+                          <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{claim.traveller_name}</div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="font-bold">₹{Number(claim.actual_expense_total).toLocaleString("en-IN")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Reject Project Expense Dialog */}
+      <Dialog open={!!rejectPE} onOpenChange={(o) => { if (!o) setRejectPE(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reject Project Expense</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              <strong>{rejectPE?.project_name}</strong> by {rejectPE?.traveller_name}<br />
+              Amount: ₹{Number(rejectPE?.actual_expense_total ?? 0).toLocaleString("en-IN")}
+            </p>
+            <div className="space-y-2">
+              <Label>Reason for Rejection *</Label>
+              <Textarea value={rejectPEReason} onChange={(e) => setRejectPEReason(e.target.value)} placeholder="Please provide a reason" rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectPE(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleRejectPE} disabled={rejectProjectExpense.isPending || !rejectPEReason.trim()}>
+              {rejectProjectExpense.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Approve Dialog */}
       <Dialog open={!!approveClaim} onOpenChange={(o) => { if (!o) setApproveClaim(null); }}>

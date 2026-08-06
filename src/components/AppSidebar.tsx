@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
 import {
-  LayoutDashboard, Plane, ShieldCheck, BarChart3, Users, UserCircle, LogOut, Receipt, HandCoins,
+  LayoutDashboard, Plane, ShieldCheck, BarChart3, Users, UserCircle, LogOut, Receipt, HandCoins, Briefcase,
 } from "lucide-react";
 import { getRolePermissions } from "@/lib/rolePermissions";
+import { isRmplOrg } from "@/lib/rmplOrg";
 import type { Organization } from "@/contexts/OrgContext";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -20,6 +21,7 @@ interface Props {
 
 export function AppSidebar({ user: _user, userRoles, onLogout, currentOrg }: Props) {
   const perms = getRolePermissions(userRoles);
+  const isRmpl = isRmplOrg(currentOrg?.id);
 
   return (
     <Sidebar>
@@ -55,12 +57,17 @@ export function AppSidebar({ user: _user, userRoles, onLogout, currentOrg }: Pro
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem to="/my-expenses" icon={<Plane className="h-4 w-4" />} label="My Claims" />
+              {isRmpl && (
+                <NavItem to="/project-expenses" icon={<Briefcase className="h-4 w-4" />} label="Project Expenses" />
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Approvals */}
-        {perms.canApproveExpenses && (
+        {/* Approvals — also shown to every RMPL member regardless of role,
+            since a Project Expense's approver is that specific project's
+            Project Owner, not an org-wide "approver" role holder. */}
+        {(perms.canApproveExpenses || isRmpl) && (
           <SidebarGroup>
             <SidebarGroupLabel>Approvals</SidebarGroupLabel>
             <SidebarGroupContent>
