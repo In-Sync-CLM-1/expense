@@ -257,6 +257,75 @@ export function useAllProjectExpenseClaims(orgId?: string, enabled = true) {
   });
 }
 
+// ─── Query: combined per-project totals (native Project Expense claims +
+//     regular Expense Claims tagged to a project) ──────────────────────────
+
+export interface ProjectSummaryRow {
+  project_number: string;
+  project_name: string;
+  projectExpenseTotal: number;
+  projectExpenseCount: number;
+  regularClaimTotal: number;
+  regularClaimCount: number;
+  combinedTotal: number;
+}
+
+const GENERAL_BUCKET = { number: "999", name: "General / Non-Project" };
+
+export function useProjectExpenseSummary(orgId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["project-expense-summary", orgId],
+    queryFn: async () => {
+      const [{ data: peClaims, error: peErr }, { data: regClaims, error: regErr }] = await Promise.all([
+        supabase
+          .from("project_expense_claims" as never)
+          .select("project_number, project_name, actual_expense_total")
+          .eq("org_id", orgId as string)
+          .neq("status", "draft"),
+        supabase
+          .from("travel_expense_claims" as never)
+          .select("project_number, project_name, total_amount, approved_amount, status")
+          .eq("org_id", orgId as string)
+          .neq("status", "draft"),
+      ]);
+      if (peErr) throw peErr;
+      if (regErr) throw regErr;
+
+      const map = new Map<string, ProjectSummaryRow>();
+      const keyFor = (num: string | null, name: string | null) => `${num ?? GENERAL_BUCKET.number}|${name ?? GENERAL_BUCKET.name}`;
+      const rowFor = (num: string | null, name: string | null) => {
+        const key = keyFor(num, name);
+        if (!map.has(key)) {
+          map.set(key, {
+            project_number: num ?? GENERAL_BUCKET.number,
+            project_name: name ?? GENERAL_BUCKET.name,
+            projectExpenseTotal: 0, projectExpenseCount: 0,
+            regularClaimTotal: 0, regularClaimCount: 0,
+            combinedTotal: 0,
+          });
+        }
+        return map.get(key)!;
+      };
+
+      for (const c of (peClaims ?? []) as { project_number: string | null; project_name: string | null; actual_expense_total: number }[]) {
+        const row = rowFor(c.project_number, c.project_name);
+        row.projectExpenseTotal += Number(c.actual_expense_total);
+        row.projectExpenseCount += 1;
+      }
+      for (const c of (regClaims ?? []) as { project_number: string | null; project_name: string | null; total_amount: number; approved_amount: number | null; status: string }[]) {
+        const row = rowFor(c.project_number, c.project_name);
+        const amount = (c.status === "approved" || c.status === "reimbursed") ? Number(c.approved_amount ?? c.total_amount) : Number(c.total_amount);
+        row.regularClaimTotal += amount;
+        row.regularClaimCount += 1;
+      }
+      for (const row of map.values()) row.combinedTotal = row.projectExpenseTotal + row.regularClaimTotal;
+
+      return Array.from(map.values()).sort((a, b) => b.combinedTotal - a.combinedTotal);
+    },
+    enabled: enabled && !!orgId,
+  });
+}
+
 function invalidateProjectExpenseQueries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["my-project-expense-claims"] });
   qc.invalidateQueries({ queryKey: ["project-expense-claim-detail"] });
