@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
+import { ExpenseClaimDialogProvider } from "@/contexts/ExpenseClaimDialogContext";
 import { AppLayout } from "@/components/AppLayout";
 
 import Landing from "./pages/Landing";
@@ -60,6 +61,12 @@ export default function App() {
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              {/* Mounted once, above the router and above every auth/org
+                  loading gate — those gates tear down and rebuild whatever
+                  is beneath them (that's the whole point of a gate), so the
+                  claim dialog must live outside all of them to actually
+                  survive navigation, tab-focus session revalidation, etc. */}
+              <ExpenseClaimDialogProvider>
               <BrowserRouter>
                 <Routes>
                   {/* Public */}
@@ -90,6 +97,7 @@ export default function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </ExpenseClaimDialogProvider>
             </TooltipProvider>
           </OrgProvider>
         </AuthProvider>

@@ -26,6 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const checkRef = useRef(0);
+  // Supabase re-validates the session (and re-fires onAuthStateChange) every
+  // time the tab regains focus, even when nothing about the login actually
+  // changed. That used to flip `loading` back to true on every such event,
+  // which every full-screen gate in the app (AppLayout, PlatformLayout)
+  // treats as "tear down the whole page and show a spinner" — silently
+  // wiping any open dialog and its in-progress state. `loading` must only
+  // ever gate the *first* resolution; later events update session/user/role
+  // in the background without re-blanking the app.
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     const handleSession = async (session: Session | null) => {
@@ -34,26 +43,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
 
       if (currentUser) {
-        setLoading(true); // hold gates open while we verify platform_admin role
         const version = ++checkRef.current;
         try {
           const { data } = await supabase.rpc("has_role" as never, {
             _user_id: currentUser.id,
             _role: "platform_admin",
           });
-          if (checkRef.current === version) {
-            setIsPlatformAdmin(!!data);
-            setLoading(false);
-          }
+          if (checkRef.current === version) setIsPlatformAdmin(!!data);
         } catch {
-          if (checkRef.current === version) {
-            setIsPlatformAdmin(false);
-            setLoading(false);
-          }
+          if (checkRef.current === version) setIsPlatformAdmin(false);
         }
       } else {
         checkRef.current++;
         setIsPlatformAdmin(false);
+      }
+
+      if (!initializedRef.current) {
+        initializedRef.current = true;
         setLoading(false);
       }
     };

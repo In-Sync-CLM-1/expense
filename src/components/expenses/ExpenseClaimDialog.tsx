@@ -44,6 +44,9 @@ import {
   downloadExpenseImportTemplate,
   parseExpenseImportFile,
 } from "@/lib/expenseExcelImport";
+import { isRmplOrg } from "@/lib/rmplOrg";
+import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
+import type { RmplProjectOption } from "@/hooks/useProjectExpenses";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -107,6 +110,8 @@ export function ExpenseClaimDialog({
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [project, setProject] = useState<RmplProjectOption | null>(null);
+  const isRmpl = isRmplOrg(orgId);
 
   const createClaim = useCreateClaim();
   const draftKey = `expense-claim-draft:${userId}`;
@@ -115,6 +120,7 @@ export function ExpenseClaimDialog({
     setTripData({ trip_title: "", destination: "", purpose: "" });
     setItems([{ ...emptyItem }]);
     setProofFiles([]);
+    setProject(null);
     localStorage.removeItem(draftKey);
   };
 
@@ -411,6 +417,9 @@ export function ExpenseClaimDialog({
         trip_end_date: itemDates[itemDates.length - 1],
         destination: tripData.destination || undefined,
         purpose: tripData.purpose || undefined,
+        rmpl_project_id: project?.id ?? null,
+        project_number: project?.project_number ?? null,
+        project_name: project?.project_name ?? null,
         items: claimItems,
       });
 
@@ -529,6 +538,20 @@ export function ExpenseClaimDialog({
               />
             </div>
           </div>
+
+          {isRmpl && (
+            <div className="space-y-2">
+              <Label>Project (optional)</Label>
+              <ProjectExpenseProjectCombobox
+                value={project?.id ?? null}
+                valueName={project?.project_name}
+                onChange={setProject}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tag this claim to a project so it counts in that project's expense total. Left blank, it's tracked under the general (999) bucket.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             {items.map((item, index) => (

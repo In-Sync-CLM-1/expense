@@ -386,6 +386,9 @@ interface CreateClaimInput {
   trip_end_date: string;
   destination?: string;
   purpose?: string;
+  rmpl_project_id?: string | null;
+  project_number?: string | null;
+  project_name?: string | null;
   items: Omit<ExpenseItem, "id" | "claim_id" | "created_at">[];
   receiptFiles?: (File | undefined)[];  // parallel array to items
   proofFiles?: File[];

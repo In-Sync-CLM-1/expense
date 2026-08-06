@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { ExpenseClaim } from "@/hooks/useExpenseClaims";
+import type { ProjectExpenseClaim, ProjectSummaryRow } from "@/hooks/useProjectExpenses";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,45 @@ export function exportClaimsToCSV(claims: ExpenseClaim[]) {
   ]);
 
   downloadCSV(buildCSV(headers, rows), `expense-claims-${stamp()}.csv`);
+}
+
+// ─── 1b. Export RMPL Project Expense claims (summary level) ───────────────────
+
+export function exportProjectExpenseClaimsToCSV(claims: ProjectExpenseClaim[]) {
+  const headers = [
+    "Claim ID", "Traveller", "Project Name", "Project No.", "Project Owner",
+    "Activity", "City", "Period", "Status",
+    "Advance Received (₹)", "Actual Expense (₹)", "Net Balance (₹)",
+    "Submitted On", "Approved On", "Reimbursed On", "Rejection Reason",
+  ];
+
+  const rows = claims.map((c) => [
+    c.id, c.traveller_name, c.project_name, c.project_number ?? "", c.project_owner_name ?? "",
+    c.activity ?? "", c.city ?? "", c.period ?? "", c.status,
+    fmtAmount(c.advance_amount), fmtAmount(c.actual_expense_total), fmtAmount(c.net_balance),
+    fmtDate(c.submitted_at), fmtDate(c.approved_at), fmtDate(c.reimbursed_at), c.rejection_reason ?? "",
+  ]);
+
+  downloadCSV(buildCSV(headers, rows), `rmpl-project-expenses-${stamp()}.csv`);
+}
+
+// ─── 1c. Export the combined per-project summary (Project Expense claims +
+//         regular Expense Claims tagged to a project) ─────────────────────────
+
+export function exportProjectSummaryToCSV(rows: ProjectSummaryRow[]) {
+  const headers = [
+    "Project No.", "Project Name",
+    "Project Expense Claims (₹)", "Project Expense Claim Count",
+    "Regular Claims (₹)", "Regular Claim Count",
+    "Combined Total (₹)",
+  ];
+  const dataRows = rows.map((r) => [
+    r.project_number, r.project_name,
+    fmtAmount(r.projectExpenseTotal), r.projectExpenseCount,
+    fmtAmount(r.regularClaimTotal), r.regularClaimCount,
+    fmtAmount(r.combinedTotal),
+  ]);
+  downloadCSV(buildCSV(headers, dataRows), `rmpl-project-summary-${stamp()}.csv`);
 }
 
 // ─── 2. Export a single claim with all line items ─────────────────────────────

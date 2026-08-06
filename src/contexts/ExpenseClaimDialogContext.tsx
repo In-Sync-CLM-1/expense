@@ -10,10 +10,13 @@ interface ExpenseClaimDialogContextValue {
 
 const ExpenseClaimDialogContext = createContext<ExpenseClaimDialogContextValue | undefined>(undefined);
 
-// Mounted once in AppLayout, which stays mounted across every page under it.
-// Keeping the dialog (and its in-progress form state) here — instead of inside
-// whichever page opened it — means navigating to another page no longer
-// unmounts it and discards what the employee was filling in.
+// Mounted once at the top of App.tsx, above the router and above every
+// auth/org loading gate (AppLayout, PlatformLayout). Keeping the dialog (and
+// its in-progress form state) here — instead of inside whichever page opened
+// it, or inside a gated layout — means neither an in-app navigation nor a
+// gate tearing its subtree down (e.g. Supabase re-validating the session on
+// tab-focus regain) can unmount it and discard what the employee was
+// filling in. It only ever goes away when they close it themselves.
 export function ExpenseClaimDialogProvider({ children }: { children: ReactNode }) {
   const [open, setOpenState] = useState(false);
   const { user } = useAuth();

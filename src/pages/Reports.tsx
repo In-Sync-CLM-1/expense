@@ -13,12 +13,20 @@ import { Loader2, Download, BarChart3, IndianRupee, CheckCircle, Clock, Banknote
 import { format } from "date-fns";
 
 import { useUserPermissions } from "@/hooks/useUserPermissions";
-import { useMarkReimbursed, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { useOrg } from "@/contexts/OrgContext";
+import { isRmplOrg } from "@/lib/rmplOrg";
+import { useMarkReimbursed, useCurrentUser, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import {
+  useAllProjectExpenseClaims, useMarkProjectExpenseReimbursed, useProjectExpenseSummary,
+  getProjectExpenseStatusColor, getProjectExpenseStatusLabel,
+} from "@/hooks/useProjectExpenses";
 import {
   exportClaimsToCSV,
   exportMonthlySummaryToCSV,
   exportTeamSummaryToCSV,
   exportPendingReimbursementToCSV,
+  exportProjectExpenseClaimsToCSV,
+  exportProjectSummaryToCSV,
   type MonthlyRow,
   type TeamRow,
 } from "@/lib/expenseExport";
@@ -188,6 +196,12 @@ function useCategoryBreakdown(claimIds: string[] | undefined) {
 
 export default function Reports() {
   const { permissions } = useUserPermissions();
+  const { currentOrg } = useOrg();
+  const { data: currentUser } = useCurrentUser();
+  const isRmpl = isRmplOrg(currentOrg?.id);
+  const { data: projectExpenseClaims, isLoading: projectExpensesLoading } = useAllProjectExpenseClaims(currentOrg?.id, isRmpl && permissions.canViewReports);
+  const { data: projectSummary, isLoading: projectSummaryLoading } = useProjectExpenseSummary(currentOrg?.id, isRmpl && permissions.canViewReports);
+  const markProjectExpenseReimbursed = useMarkProjectExpenseReimbursed();
   const { data: allClaims, isLoading: claimsLoading } = useAllClaims();
   const { data: teamRows, isLoading: teamLoading } = useTeamSummary();
   const claimIds = useMemo(() => allClaims?.map((c) => c.id), [allClaims]);
@@ -219,16 +233,6 @@ export default function Reports() {
     });
   }, [allClaims, exportFrom, exportTo]);
 
-  if (!permissions.canViewReports) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card><CardContent className="py-16 text-center text-muted-foreground">
-          You do not have permission to view reports.
-        </CardContent></Card>
-      </div>
-    );
-  }
-
   // ── Monthly summary ──────────────────────────────────────────────────────
   const monthlyRows = useMemo<MonthlyRow[]>(() => {
     if (!allClaims) return [];
@@ -258,6 +262,21 @@ export default function Reports() {
     () => allClaims?.filter((c) => c.status === "approved") ?? [],
     [allClaims]
   );
+
+  // ── Project expense stats (RMPL only) ────────────────────────────────────
+  const projectExpenseStats = useMemo(() => {
+    if (!projectExpenseClaims) return null;
+    return {
+      total: projectExpenseClaims.length,
+      pending: projectExpenseClaims.filter((c) => c.status === "submitted").length,
+      awaitingPayment: projectExpenseClaims.filter((c) => c.status === "approved").length,
+      reimbursed: projectExpenseClaims.filter((c) => c.status === "reimbursed").length,
+      totalActual: projectExpenseClaims.reduce((s, c) => s + Number(c.actual_expense_total), 0),
+      awaitingPaymentAmount: projectExpenseClaims
+        .filter((c) => c.status === "approved")
+        .reduce((s, c) => s + Number(c.actual_expense_total), 0),
+    };
+  }, [projectExpenseClaims]);
 
   const handleMarkReimbursed = async (claimId: string) => {
     setReimbursing(claimId);
@@ -451,6 +470,16 @@ export default function Reports() {
     };
   }, [teamRows]);
 
+  if (!permissions.canViewReports) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card><CardContent className="py-16 text-center text-muted-foreground">
+          You do not have permission to view reports.
+        </CardContent></Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -524,6 +553,16 @@ export default function Reports() {
             )}
           </TabsTrigger>
           <TabsTrigger value="all-claims">All Claims</TabsTrigger>
+          {isRmpl && (
+            <TabsTrigger value="project-expenses">
+              Project Expenses
+              {(projectExpenseStats?.awaitingPayment ?? 0) > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 min-w-5 px-1 text-xs">
+                  {projectExpenseStats?.awaitingPayment}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── Overview (charts) ── */}
@@ -851,6 +890,135 @@ export default function Reports() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Project Expenses (RMPL only) ── */}
+        {isRmpl && (
+          <TabsContent value="project-expenses" className="mt-4 space-y-4">
+            {projectExpenseStats && (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                <StatCard icon={<BarChart3 className="h-4 w-4 text-blue-500" />} label="Total Claims" value={projectExpenseStats.total} />
+                <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending Owner Approval" value={projectExpenseStats.pending} highlight={projectExpenseStats.pending > 0} />
+                <StatCard icon={<IndianRupee className="h-4 w-4 text-amber-500" />} label="Awaiting Payment" value={`₹${projectExpenseStats.awaitingPaymentAmount.toLocaleString("en-IN")}`} highlight={projectExpenseStats.awaitingPayment > 0} />
+                <StatCard icon={<Banknote className="h-4 w-4 text-purple-500" />} label="Total Actual Expense" value={`₹${projectExpenseStats.totalActual.toLocaleString("en-IN")}`} />
+              </div>
+            )}
+
+            <Card>
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle>By Project</CardTitle>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => exportProjectSummaryToCSV(projectSummary ?? [])}
+                  disabled={!projectSummary?.length}
+                >
+                  <Download className="h-4 w-4 mr-2" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Combines dedicated Project Expense claims with regular Expense Claims tagged to a project. Untagged regular claims fall under the general (999) bucket.
+                </p>
+                {projectSummaryLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead className="text-right">Project Expense Claims (₹)</TableHead>
+                        <TableHead className="text-right">Regular Claims (₹)</TableHead>
+                        <TableHead className="text-right">Combined Total (₹)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(projectSummary ?? []).map((row) => (
+                        <TableRow key={`${row.project_number}|${row.project_name}`}>
+                          <TableCell className="font-medium">
+                            {row.project_name}
+                            <div className="text-xs text-muted-foreground">{row.project_number}</div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {row.projectExpenseTotal ? `₹${row.projectExpenseTotal.toLocaleString("en-IN")}` : "—"}
+                            {row.projectExpenseCount > 0 && <span className="text-xs text-muted-foreground ml-1">({row.projectExpenseCount})</span>}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {row.regularClaimTotal ? `₹${row.regularClaimTotal.toLocaleString("en-IN")}` : "—"}
+                            {row.regularClaimCount > 0 && <span className="text-xs text-muted-foreground ml-1">({row.regularClaimCount})</span>}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">₹{row.combinedTotal.toLocaleString("en-IN")}</TableCell>
+                        </TableRow>
+                      ))}
+                      {!projectSummary?.length && (
+                        <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No data yet</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle>RMPL Project Expense Claims</CardTitle>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => exportProjectExpenseClaimsToCSV(projectExpenseClaims ?? [])}
+                  disabled={!projectExpenseClaims?.length}
+                >
+                  <Download className="h-4 w-4 mr-2" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {projectExpensesLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Traveller</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Project Owner</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actual Expense (₹)</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(projectExpenseClaims ?? []).map((claim) => (
+                        <TableRow key={claim.id}>
+                          <TableCell className="font-medium">{claim.traveller_name}</TableCell>
+                          <TableCell className="text-sm">
+                            {claim.project_name}
+                            {claim.project_number && <div className="text-xs text-muted-foreground">{claim.project_number}</div>}
+                          </TableCell>
+                          <TableCell className="text-sm">{claim.project_owner_name ?? "—"}</TableCell>
+                          <TableCell><Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge></TableCell>
+                          <TableCell className="text-right font-semibold">₹{Number(claim.actual_expense_total).toLocaleString("en-IN")}</TableCell>
+                          <TableCell className="text-right">
+                            {claim.status === "approved" && (
+                              <Button
+                                size="sm" variant="outline"
+                                disabled={markProjectExpenseReimbursed.isPending}
+                                onClick={() => currentUser && markProjectExpenseReimbursed.mutate({ claimId: claim.id, reimbursedBy: currentUser.id })}
+                              >
+                                Mark Paid
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!projectExpenseClaims?.length && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No project expense claims found</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
