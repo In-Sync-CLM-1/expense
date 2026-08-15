@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
+import { toast } from "sonner";
 
 export interface Organization {
   id: string;
@@ -29,7 +30,7 @@ interface OrgContextType {
   orgs: OrgMembership[];
   isPlatformAdmin: boolean;
   loading: boolean;
-  switchOrg: (orgId: string) => void;
+  switchOrg: (orgId: string) => Promise<void>;
   refreshOrgs: () => Promise<void>;
 }
 
@@ -40,7 +41,7 @@ const OrgContext = createContext<OrgContextType>({
   orgs: [],
   isPlatformAdmin: false,
   loading: true,
-  switchOrg: () => {},
+  switchOrg: async () => {},
   refreshOrgs: async () => {},
 });
 
@@ -103,7 +104,18 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
     setOrgs(mapped);
 
-    const savedOrgId = localStorage.getItem(LS_KEY);
+    // The saved choice lives on the profile so it follows the person between
+    // devices; local storage is only a fallback for a profile that has not
+    // been given one yet.
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("active_org_id")
+      .eq("id", uid)
+      .maybeSingle();
+
+    const savedOrgId =
+      (profileRow as { active_org_id: string | null } | null)?.active_org_id ??
+      localStorage.getItem(LS_KEY);
     const saved = mapped.find((m) => m.org_id === savedOrgId);
 
     if (saved) {
@@ -128,14 +140,23 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     fetchOrgs();
   }, [fetchOrgs]);
 
-  const switchOrg = (orgId: string) => {
+  const switchOrg = async (orgId: string) => {
     const membership = orgs.find((m) => m.org_id === orgId);
-    if (membership) {
-      setCurrentOrg(membership.organization);
-      setOrgRole(membership.role);
-      setOrgRoles(membership.roles);
-      localStorage.setItem(LS_KEY, orgId);
+    if (!membership) return;
+
+    // Same call as every other app in the fleet. It refuses any organisation
+    // the caller is not a member of, so the switch cannot put the UI somewhere
+    // the database would not serve.
+    const { error } = await supabase.rpc("set_active_org", { p_org_id: orgId });
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+
+    setCurrentOrg(membership.organization);
+    setOrgRole(membership.role);
+    setOrgRoles(membership.roles);
+    localStorage.setItem(LS_KEY, orgId);
   };
 
   return (
