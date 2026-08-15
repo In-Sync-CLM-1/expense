@@ -21,8 +21,10 @@ export function ProtectedRoute({ children, requireOrgRole }: Props) {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  // Platform admins bypass all org checks
-  if (isPlatformAdmin) return <>{children}</>;
+  // A platform admin with no organisation bypasses the org checks entirely.
+  // One who belongs to an organisation is treated as a member of it, so the
+  // per-role checks below still apply to what they can open there.
+  if (isPlatformAdmin && !currentOrg) return <>{children}</>;
 
   if (!currentOrg) return <Navigate to="/create-org" replace />;
 

@@ -37,8 +37,11 @@ export function AppLayout() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate("/login", { replace: true }); return; }
-    if (isPlatformAdmin) { navigate("/platform", { replace: true }); return; }
-    if (!orgLoading && !currentOrg) { navigate("/create-org", { replace: true }); return; }
+    // Console-only means the platform role AND no organisation. A platform
+    // admin who belongs to one gets the normal app; the console stays
+    // reachable from the organisation switcher.
+    if (isPlatformAdmin && !orgLoading && !currentOrg) { navigate("/platform", { replace: true }); return; }
+    if (!isPlatformAdmin && !orgLoading && !currentOrg) { navigate("/create-org", { replace: true }); return; }
   }, [authLoading, orgLoading, user, isPlatformAdmin, currentOrg, navigate]);
 
   const handleLogout = async () => {
