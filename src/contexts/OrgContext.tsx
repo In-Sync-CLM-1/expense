@@ -66,7 +66,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     if (authLoading) return;
 
     const uid = userIdRef.current;
-    if (!uid || isPlatformAdmin) {
+    // A platform admin used to be given no organisations at all. That is right
+    // for a console-only account, but wrong for someone who also works inside
+    // one — they arrive from another tool expecting their workspace. Load the
+    // memberships either way; having none still leaves them console-only.
+    if (!uid) {
       setOrgs([]);
       setCurrentOrg(null);
       setOrgRole(null);
