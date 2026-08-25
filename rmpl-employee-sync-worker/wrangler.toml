@@ -1,0 +1,10 @@
+name = "expense-rmpl-employee-sync"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+SYNC_FUNCTION_URL = "https://ljokqicllbemfjytfhbi.supabase.co/functions/v1/sync-rmpl-employees"
