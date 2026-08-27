@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Loader2, Briefcase, X, Paperclip, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, Briefcase, X, Paperclip, AlertTriangle, FileSpreadsheet, Download } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
 import {
@@ -15,6 +16,7 @@ import {
   useMyDisbursedAdvancesForProject,
   type RmplProjectOption,
 } from "@/hooks/useProjectExpenses";
+import { downloadProjectExpenseImportTemplate, parseProjectExpenseImportFile } from "@/lib/projectExpenseExcelImport";
 import { useQuery } from "@tanstack/react-query";
 
 interface ProjectExpenseClaimDialogProps {
@@ -70,6 +72,8 @@ function useOwnFullName(userId: string) {
 
 export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }: ProjectExpenseClaimDialogProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const { data: ownName } = useOwnFullName(userId);
 
   const [project, setProject] = useState<RmplProjectOption | null>(null);
@@ -123,6 +127,43 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     const updated = [...travelLogs];
     updated[i] = { ...updated[i], [field]: value };
     setTravelLogs(updated);
+  };
+
+  const handleImportExcel = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const { lines: parsedLines, travelLogs: parsedTravelLogs, errors } = await parseProjectExpenseImportFile(file);
+
+      if (parsedLines.length > 0) {
+        setLines((prev) => {
+          const prevIsBlank = prev.length === 1 && !prev[0].line_date && !prev[0].description && lineTotal(prev[0]) === 0;
+          return prevIsBlank ? parsedLines : [...prev, ...parsedLines];
+        });
+      }
+      if (parsedTravelLogs.length > 0) {
+        setTravelLogs((prev) => [...prev, ...parsedTravelLogs]);
+      }
+
+      const importedCount = parsedLines.length + parsedTravelLogs.length;
+      if (errors.length > 0) {
+        toast.error(
+          importedCount > 0
+            ? `Imported ${importedCount} row(s). ${errors.length} row(s) skipped — ${errors.slice(0, 3).join(" ")}`
+            : `Could not import any rows — ${errors.slice(0, 3).join(" ")}`,
+          { duration: 8000 },
+        );
+      } else if (importedCount > 0) {
+        toast.success(`Imported ${parsedLines.length} expense line(s)${parsedTravelLogs.length ? ` and ${parsedTravelLogs.length} travel log row(s)` : ""} — attach receipts below before submitting.`);
+      } else {
+        toast.error("No rows found in that file.");
+      }
+    } catch (err) {
+      console.error("Project expense Excel import failed:", err);
+      toast.error("Could not read that file. Please use the downloadable template.");
+    } finally {
+      setImporting(false);
+    }
   };
 
   const actualTotal = lines.reduce((sum, l) => sum + lineTotal(l), 0);
@@ -267,7 +308,42 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
 
           {/* Expense lines */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Expense Lines</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Expense Lines</Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={downloadProjectExpenseImportTemplate}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" /> Download Excel template
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => importInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  {importing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  )}
+                  Import from Excel
+                </Button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleImportExcel(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
             {lines.map((line, index) => (
               <Card key={index} className="relative">
                 <CardContent className="pt-4 space-y-3">
