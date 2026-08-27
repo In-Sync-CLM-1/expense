@@ -21,7 +21,10 @@ export function RmplProjectCombobox({ value, valueName, onChange, disabled }: Rm
   const [search, setSearch] = useState("");
   const { data: projects = [], isLoading, isError } = useRmplProjects(open);
 
-  const filtered = projects.filter((p) => p.project_name.toLowerCase().includes(search.trim().toLowerCase()));
+  const q = search.trim().toLowerCase();
+  const filtered = projects.filter(
+    (p) => p.project_name.toLowerCase().includes(q) || (p.project_number ?? "").toLowerCase().includes(q)
+  );
   const selectedName = projects.find((p) => p.id === value)?.project_name || valueName;
 
   return (
@@ -53,7 +56,12 @@ export function RmplProjectCombobox({ value, valueName, onChange, disabled }: Rm
                       onSelect={() => { onChange(p.id, p.project_name); setSearch(""); setOpen(false); }}
                     >
                       <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
-                      {p.project_name}
+                      <span className="flex flex-col">
+                        <span>{p.project_name}</span>
+                        {p.project_number && (
+                          <span className="text-xs text-muted-foreground">{p.project_number}</span>
+                        )}
+                      </span>
                     </CommandItem>
                   ))}
                 </CommandGroup>

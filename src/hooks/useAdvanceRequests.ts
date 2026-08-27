@@ -31,6 +31,7 @@ export interface AdvanceRequest {
 export interface RmplProject {
   id: string;
   project_name: string;
+  project_number: string | null;
 }
 
 /** The signed-in maker's own requests. */
