@@ -282,7 +282,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
 
           <div className="grid grid-cols-4 gap-3">
             <div className="space-y-1.5">
-              <Label>Traveller Name *</Label>
+              <Label>Name *</Label>
               <Input className="h-9" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
