@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -85,7 +86,8 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   const [travellerName, setTravellerName] = useState("");
   const [activity, setActivity] = useState("");
   const [city, setCity] = useState("");
-  const [period, setPeriod] = useState("");
+  const [periodFrom, setPeriodFrom] = useState("");
+  const [periodTo, setPeriodTo] = useState("");
   const [advanceId, setAdvanceId] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>(makeDefaultLines());
   const [travelLogs, setTravelLogs] = useState<DraftTravelLog[]>([]);
@@ -107,7 +109,8 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     setTravellerName(ownName || "");
     setActivity("");
     setCity("");
-    setPeriod("");
+    setPeriodFrom("");
+    setPeriodTo("");
     setAdvanceId(null);
     setLines(makeDefaultLines());
     setTravelLogs([]);
@@ -171,6 +174,13 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     }
   };
 
+  const formatPeriodDate = (d: string) => format(new Date(`${d}T00:00:00`), "d MMM yyyy");
+  const periodDisplay =
+    periodFrom && periodTo ? `${formatPeriodDate(periodFrom)} – ${formatPeriodDate(periodTo)}`
+    : periodFrom ? formatPeriodDate(periodFrom)
+    : periodTo ? formatPeriodDate(periodTo)
+    : "";
+
   const activeLines = lines.filter((l) => !isLineBlank(l));
   const actualTotal = activeLines.reduce((sum, l) => sum + lineTotal(l), 0);
   const selectedAdvance = disbursedAdvances.find((a) => a.id === advanceId);
@@ -201,7 +211,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
         project_owner_email: project.project_owner_email,
         activity: activity.trim(),
         city: city.trim(),
-        period: period.trim(),
+        period: periodDisplay,
         advanceId,
         items: activeLines.map((l) => ({
           line_date: l.line_date,
@@ -280,9 +290,9 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             )}
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-1.5">
-              <Label>Traveller Name *</Label>
+          <div className="grid grid-cols-6 gap-3">
+            <div className="space-y-1.5 col-span-2">
+              <Label>Name *</Label>
               <Input className="h-9" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
@@ -293,9 +303,13 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
               <Label>Activity</Label>
               <Input className="h-9" value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="e.g. Booth setup" />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 col-span-2">
               <Label>Period</Label>
-              <Input className="h-9" value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. 12–14 Aug 2026" />
+              <div className="flex items-center gap-1.5">
+                <Input type="date" className="h-9 flex-1" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                <span className="text-muted-foreground text-sm shrink-0">–</span>
+                <Input type="date" className="h-9 flex-1" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+              </div>
             </div>
           </div>
 
