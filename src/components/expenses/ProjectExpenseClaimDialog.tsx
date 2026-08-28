@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, Loader2, Briefcase, X, Paperclip, AlertTriangle, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +58,12 @@ const lineTotal = (l: DraftLine) =>
   (parseFloat(l.local_conveyance) || 0) + (parseFloat(l.event_expense) || 0) +
   (parseFloat(l.refreshment) || 0) + (parseFloat(l.other_expense) || 0);
 
+const isLineBlank = (l: DraftLine) =>
+  !l.line_date && !l.description && !l.mode_of_transport && !l.file && lineTotal(l) === 0;
+
+const DEFAULT_LINE_COUNT = 5;
+const makeDefaultLines = () => Array.from({ length: DEFAULT_LINE_COUNT }, () => ({ ...emptyLine }));
+
 function useOwnFullName(userId: string) {
   return useQuery({
     queryKey: ["own-full-name", userId],
@@ -82,7 +87,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   const [city, setCity] = useState("");
   const [period, setPeriod] = useState("");
   const [advanceId, setAdvanceId] = useState<string | null>(null);
-  const [lines, setLines] = useState<DraftLine[]>([{ ...emptyLine }]);
+  const [lines, setLines] = useState<DraftLine[]>(makeDefaultLines());
   const [travelLogs, setTravelLogs] = useState<DraftTravelLog[]>([]);
 
   const createClaim = useCreateProjectExpenseClaim();
@@ -104,7 +109,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     setCity("");
     setPeriod("");
     setAdvanceId(null);
-    setLines([{ ...emptyLine }]);
+    setLines(makeDefaultLines());
     setTravelLogs([]);
   };
 
@@ -137,8 +142,8 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
 
       if (parsedLines.length > 0) {
         setLines((prev) => {
-          const prevIsBlank = prev.length === 1 && !prev[0].line_date && !prev[0].description && lineTotal(prev[0]) === 0;
-          return prevIsBlank ? parsedLines : [...prev, ...parsedLines];
+          const filledPrev = prev.filter((l) => !isLineBlank(l));
+          return [...filledPrev, ...parsedLines];
         });
       }
       if (parsedTravelLogs.length > 0) {
@@ -166,7 +171,8 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     }
   };
 
-  const actualTotal = lines.reduce((sum, l) => sum + lineTotal(l), 0);
+  const activeLines = lines.filter((l) => !isLineBlank(l));
+  const actualTotal = activeLines.reduce((sum, l) => sum + lineTotal(l), 0);
   const selectedAdvance = disbursedAdvances.find((a) => a.id === advanceId);
   const advanceAmount = selectedAdvance?.amount ?? 0;
   const netBalance = advanceAmount - actualTotal;
@@ -175,8 +181,8 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     !!project &&
     !!travellerName.trim() &&
     !!project?.project_owner_user_id &&
-    lines.length > 0 &&
-    lines.every((l) => l.line_date && (l.description || lineTotal(l) > 0));
+    activeLines.length > 0 &&
+    activeLines.every((l) => l.line_date && (l.description || lineTotal(l) > 0));
 
   const handleSubmit = async (asDraft: boolean) => {
     if (!project) return;
@@ -197,7 +203,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
         city: city.trim(),
         period: period.trim(),
         advanceId,
-        items: lines.map((l) => ({
+        items: activeLines.map((l) => ({
           line_date: l.line_date,
           description: l.description,
           mode_of_transport: l.mode_of_transport,
@@ -206,7 +212,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           refreshment: parseFloat(l.refreshment) || 0,
           other_expense: parseFloat(l.other_expense) || 0,
         })),
-        itemFiles: lines.map((l) => l.file),
+        itemFiles: activeLines.map((l) => l.file),
         travelLogs: travelLogs
           .filter((t) => t.travel_date || t.from_place || t.to_place)
           .map((t) => ({
@@ -228,15 +234,15 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!submitting) { onOpenChange(v); if (!v) resetForm(); } }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" /> New Project Expense
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
             <Label>Project *</Label>
             <ProjectExpenseProjectCombobox
               value={project?.id ?? null}
@@ -246,6 +252,9 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             {project && (
               <p className="text-xs text-muted-foreground">
                 Project No. {project.project_number ?? "—"} · Project Owner: {project.project_owner_name ?? "Unresolved"}
+                {disbursedAdvances.length === 0 && " · No advance disbursed — Advance Received will be ₹0"}
+                {disbursedAdvances.length === 1 &&
+                  ` · Advance Received: ₹${disbursedAdvances[0].amount.toLocaleString("en-IN")} on ${new Date(disbursedAdvances[0].advance_date).toLocaleDateString("en-IN")}${disbursedAdvances[0].note ? ` (${disbursedAdvances[0].note})` : ""}`}
               </p>
             )}
             {project && !project.project_owner_user_id && (
@@ -254,46 +263,11 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                 This project's owner ({project.project_owner_email ?? project.project_owner_name ?? "unknown"}) isn't a user in Expense yet — this claim can't be routed for approval. Contact your admin.
               </p>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Traveller Name *</Label>
-              <Input value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>City</Label>
-              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Bengaluru" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Activity</Label>
-              <Input value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="e.g. Booth setup & event support" />
-            </div>
-            <div className="space-y-2">
-              <Label>Period</Label>
-              <Input value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. 12–14 Aug 2026" />
-            </div>
-          </div>
-
-          {project && (
-            <div className="space-y-2">
-              <Label>Advance Received</Label>
-              {disbursedAdvances.length === 0 ? (
-                <p className="text-sm text-muted-foreground p-2 bg-muted rounded">
-                  No disbursed advance on file for this project — Advance Received will be ₹0.
-                </p>
-              ) : disbursedAdvances.length === 1 ? (
-                <p className="text-sm p-2 bg-muted rounded">
-                  ₹{disbursedAdvances[0].amount.toLocaleString("en-IN")} disbursed on{" "}
-                  {new Date(disbursedAdvances[0].advance_date).toLocaleDateString("en-IN")}
-                  {disbursedAdvances[0].note ? ` — ${disbursedAdvances[0].note}` : ""}
-                </p>
-              ) : (
+            {project && disbursedAdvances.length > 1 && (
+              <div className="flex items-center gap-2 pt-0.5">
+                <Label className="text-xs shrink-0">Advance Received</Label>
                 <Select value={advanceId ?? ""} onValueChange={setAdvanceId}>
-                  <SelectTrigger><SelectValue placeholder="Select which disbursement this claim draws down" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs w-auto min-w-[260px]"><SelectValue placeholder="Select which disbursement this claim draws down" /></SelectTrigger>
                   <SelectContent>
                     {disbursedAdvances.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
@@ -302,12 +276,31 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                     ))}
                   </SelectContent>
                 </Select>
-              )}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-1.5">
+              <Label>Traveller Name *</Label>
+              <Input className="h-9" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
             </div>
-          )}
+            <div className="space-y-1.5">
+              <Label>City</Label>
+              <Input className="h-9" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Bengaluru" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Activity</Label>
+              <Input className="h-9" value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="e.g. Booth setup" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Period</Label>
+              <Input className="h-9" value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. 12–14 Aug 2026" />
+            </div>
+          </div>
 
           {/* Expense lines */}
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-semibold">Expense Lines</Label>
               <div className="flex items-center gap-3">
@@ -344,66 +337,77 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                 />
               </div>
             </div>
-            {lines.map((line, index) => (
-              <Card key={index} className="relative">
-                <CardContent className="pt-4 space-y-3">
-                  {lines.length > 1 && (
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeLine(index)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Date *</Label>
-                      <Input type="date" className="h-9" value={line.line_date} onChange={(e) => updateLine(index, "line_date", e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Mode of Transport</Label>
-                      <Input className="h-9" value={line.mode_of_transport} onChange={(e) => updateLine(index, "mode_of_transport", e.target.value)} placeholder="e.g. Cab" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Description</Label>
-                    <Input className="h-9" value={line.description} onChange={(e) => updateLine(index, "description", e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Local Conveyance</Label>
-                      <Input type="number" className="h-9" value={line.local_conveyance} onChange={(e) => updateLine(index, "local_conveyance", e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Event Expense</Label>
-                      <Input type="number" className="h-9" value={line.event_expense} onChange={(e) => updateLine(index, "event_expense", e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Refreshment</Label>
-                      <Input type="number" className="h-9" value={line.refreshment} onChange={(e) => updateLine(index, "refreshment", e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Other Expense</Label>
-                      <Input type="number" className="h-9" value={line.other_expense} onChange={(e) => updateLine(index, "other_expense", e.target.value)} placeholder="0.00" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1 flex-1">
-                      <Label className="text-xs flex items-center gap-1"><Paperclip className="h-3 w-3" /> Supporting Document</Label>
-                      <Input
-                        type="file"
-                        className="h-9 text-xs"
+
+            <div className="border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-[112px_92px_1fr_82px_82px_82px_82px_36px_88px_28px] gap-1.5 px-2 py-1.5 bg-muted text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                <span>Date *</span>
+                <span>Mode</span>
+                <span>Description</span>
+                <span>Local Conv.</span>
+                <span>Event</span>
+                <span>Refreshmt.</span>
+                <span>Other</span>
+                <span className="text-center">Doc</span>
+                <span className="text-right">Total</span>
+                <span />
+              </div>
+              <div className="divide-y">
+                {lines.map((line, index) => (
+                  <div key={index} className="grid grid-cols-[112px_92px_1fr_82px_82px_82px_82px_36px_88px_28px] gap-1.5 px-2 py-1 items-center">
+                    <Input
+                      type="date" className="h-8 text-xs px-1.5"
+                      value={line.line_date} onChange={(e) => updateLine(index, "line_date", e.target.value)}
+                    />
+                    <Input
+                      className="h-8 text-xs px-1.5" placeholder="Cab"
+                      value={line.mode_of_transport} onChange={(e) => updateLine(index, "mode_of_transport", e.target.value)}
+                    />
+                    <Input
+                      className="h-8 text-xs px-1.5" placeholder="Description"
+                      value={line.description} onChange={(e) => updateLine(index, "description", e.target.value)}
+                    />
+                    <Input
+                      type="number" className="h-8 text-xs px-1.5" placeholder="0.00"
+                      value={line.local_conveyance} onChange={(e) => updateLine(index, "local_conveyance", e.target.value)}
+                    />
+                    <Input
+                      type="number" className="h-8 text-xs px-1.5" placeholder="0.00"
+                      value={line.event_expense} onChange={(e) => updateLine(index, "event_expense", e.target.value)}
+                    />
+                    <Input
+                      type="number" className="h-8 text-xs px-1.5" placeholder="0.00"
+                      value={line.refreshment} onChange={(e) => updateLine(index, "refreshment", e.target.value)}
+                    />
+                    <Input
+                      type="number" className="h-8 text-xs px-1.5" placeholder="0.00"
+                      value={line.other_expense} onChange={(e) => updateLine(index, "other_expense", e.target.value)}
+                    />
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="file" id={`project-line-file-${index}`} className="sr-only"
                         accept="image/*,.pdf"
                         onChange={(e) => setLineFile(index, e.target.files?.[0])}
                       />
-                      {line.file && <p className="text-xs text-muted-foreground">{line.file.name}</p>}
+                      <label
+                        htmlFor={`project-line-file-${index}`}
+                        title={line.file?.name || "Attach supporting document"}
+                        className={`h-8 w-8 flex items-center justify-center rounded border cursor-pointer hover:bg-muted ${line.file ? "border-primary text-primary" : "text-muted-foreground"}`}
+                      >
+                        <Paperclip className="h-3.5 w-3.5" />
+                      </label>
                     </div>
-                    <div className="ml-4 text-right">
-                      <Label className="text-xs block">Line Total</Label>
-                      <span className="font-semibold">₹{lineTotal(line).toLocaleString("en-IN")}</span>
-                    </div>
+                    <span className="text-xs font-semibold text-right pr-1">₹{lineTotal(line).toLocaleString("en-IN")}</span>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-7"
+                      onClick={() => removeLine(index)} disabled={lines.length === 1}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            <Button variant="outline" onClick={addLine} className="w-full">
+                ))}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={addLine}>
               <Plus className="h-4 w-4 mr-2" /> Add Expense Line
             </Button>
           </div>
