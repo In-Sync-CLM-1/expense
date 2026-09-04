@@ -16,6 +16,7 @@ import CreateOrg from "./pages/CreateOrg";
 import Dashboard from "./pages/Dashboard";
 import MyExpenses from "./pages/MyExpenses";
 import ProjectExpenses from "./pages/ProjectExpenses";
+import GiftingExpenses from "./pages/GiftingExpenses";
 import Approvals from "./pages/Approvals";
 import Advances from "./pages/Advances";
 import Reports from "./pages/Reports";
@@ -87,6 +88,7 @@ export default function App() {
                     <Route path="/dashboard"   element={<Dashboard />} />
                     <Route path="/my-expenses" element={<MyExpenses />} />
                     <Route path="/project-expenses" element={<ProjectExpenses />} />
+                    <Route path="/gifting-expenses" element={<GiftingExpenses />} />
                     <Route path="/approvals"   element={<Approvals />} />
                     <Route path="/advances"    element={<Advances />} />
                     <Route path="/reports"     element={<Reports />} />

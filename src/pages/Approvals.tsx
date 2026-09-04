@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, ShieldCheck, IndianRupee } from "lucide-react";
+import { Loader2, CheckCircle, ShieldCheck, IndianRupee, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
@@ -28,6 +28,10 @@ import {
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
 import { ProjectExpenseApprovalCard } from "@/components/expenses/ProjectExpenseApprovalCard";
+import {
+  useAllGiftingExpenseClaims, useMarkGiftingExpenseReimbursed,
+  getGiftingStatusColor, getGiftingStatusLabel,
+} from "@/hooks/useGiftingExpenses";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
@@ -47,6 +51,9 @@ export default function Approvals() {
   const approveProjectExpense = useApproveProjectExpenseClaim();
   const rejectProjectExpense = useRejectProjectExpenseClaim();
   const markProjectExpenseReimbursed = useMarkProjectExpenseReimbursed();
+
+  const { data: allGiftingExpenses } = useAllGiftingExpenseClaims(currentOrg?.id, isRmpl && (permissions.isAdmin || permissions.isAccounts));
+  const markGiftingExpenseReimbursed = useMarkGiftingExpenseReimbursed();
 
   const [rejectClaim, setRejectClaim] = useState<ExpenseClaim | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -95,6 +102,9 @@ export default function Approvals() {
     ? allProjectExpenses?.filter((c) => c.status === "approved") ?? []
     : [];
 
+  const giftingAwaitingPayment = allGiftingExpenses?.filter((c) => c.status === "submitted") ?? [];
+  const giftingHistory = allGiftingExpenses?.filter((c) => c.status === "reimbursed") ?? [];
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
@@ -125,6 +135,14 @@ export default function Approvals() {
                 <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">
                   {(pendingProjectExpenses?.length ?? 0) + awaitingPayment.length}
                 </Badge>
+              )}
+            </TabsTrigger>
+          )}
+          {isRmpl && (permissions.isAdmin || permissions.isAccounts) && (
+            <TabsTrigger value="gifting" className="flex gap-2 items-center">
+              <Gift className="h-3.5 w-3.5" /> Gifting
+              {giftingAwaitingPayment.length > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{giftingAwaitingPayment.length}</Badge>
               )}
             </TabsTrigger>
           )}
@@ -349,6 +367,68 @@ export default function Approvals() {
                       </div>
                       <div className="text-right ml-4">
                         <div className="font-bold">₹{Number(claim.actual_expense_total).toLocaleString("en-IN")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Gifting (RMPL only, Accounts/Admin only — no approval step) */}
+        {isRmpl && (permissions.isAdmin || permissions.isAccounts) && (
+          <TabsContent value="gifting" className="mt-4 space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                <IndianRupee className="h-4 w-4" /> Awaiting payment
+              </h3>
+              {!giftingAwaitingPayment.length ? (
+                <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nothing awaiting payment right now.</CardContent></Card>
+              ) : (
+                <div className="space-y-3">
+                  {giftingAwaitingPayment.map((claim) => (
+                    <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
+                      </div>
+                      <div className="text-right ml-4 flex items-center gap-3">
+                        <div className="font-bold">₹{Number(claim.total_amount).toLocaleString("en-IN")}</div>
+                        <Button
+                          size="sm"
+                          disabled={markGiftingExpenseReimbursed.isPending}
+                          onClick={() => user && markGiftingExpenseReimbursed.mutate({ claimId: claim.id, reimbursedBy: user.id })}
+                        >
+                          Mark Paid
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold mb-2">History</h3>
+              {!giftingHistory.length ? (
+                <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">No history yet</CardContent></Card>
+              ) : (
+                <div className="space-y-3">
+                  {giftingHistory.map((claim) => (
+                    <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="font-bold">₹{Number(claim.total_amount).toLocaleString("en-IN")}</div>
                       </div>
                     </div>
                   ))}
