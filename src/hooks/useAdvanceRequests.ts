@@ -129,16 +129,23 @@ export function useCreateAdvanceRequest() {
       const { data, error } = await supabase
         .from("expense_advance_requests" as never)
         .insert(req as never)
-        .select("id")
+        .select("id, status")
         .single();
       if (error) throw error;
-      return data as unknown as { id: string };
+      return data as unknown as { id: string; status: string };
     },
     onSuccess: (data) => {
       invalidateAdvanceRequestQueries(qc);
-      toast.success("Advance request submitted — your approver will review it shortly");
+      const autoApproved = data.status === "approved";
+      toast.success(
+        autoApproved
+          ? "Advance request approved"
+          : "Advance request submitted — your approver will review it shortly"
+      );
       supabase.functions
-        .invoke("notify-advance-request-submitted", { body: { advance_request_id: data.id } })
+        .invoke(autoApproved ? "notify-advance-decision" : "notify-advance-request-submitted", {
+          body: { advance_request_id: data.id },
+        })
         .catch(() => {
           // Notification failure shouldn't block the maker's submission
         });

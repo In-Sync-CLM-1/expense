@@ -475,22 +475,24 @@ export function useSubmitClaim() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (claimId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("travel_expense_claims" as never)
         .update({ status: "submitted", submitted_at: new Date().toISOString() })
-        .eq("id", claimId);
+        .eq("id", claimId)
+        .select("status")
+        .single();
       if (error) throw error;
-      return claimId;
+      return { claimId, autoApproved: (data as { status: string }).status === "approved" };
     },
-    onSuccess: async (claimId) => {
+    onSuccess: async ({ claimId, autoApproved }) => {
       queryClient.invalidateQueries({ queryKey: ["expense-claims"] });
       queryClient.invalidateQueries({ queryKey: ["expense-claim-detail"] });
-      toast.success("Claim submitted for approval!");
+      toast.success(autoApproved ? "Claim submitted and auto-approved!" : "Claim submitted for approval!");
 
-      // Trigger email notification to manager
+      // Trigger email notification to manager (or, if auto-approved, the approval notice)
       try {
         await supabase.functions.invoke("send-expense-notification", {
-          body: { event: "submitted", claim_id: claimId },
+          body: { event: autoApproved ? "approved" : "submitted", claim_id: claimId },
         });
       } catch (err) {
         console.error("Notification failed:", err);
