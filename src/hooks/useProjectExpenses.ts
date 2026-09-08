@@ -412,22 +412,29 @@ export function useCreateProjectExpenseClaim() {
         if (linkError) console.error("Failed to link advance:", linkError);
       }
 
+      let autoApproved = false;
       if (submit) {
-        await supabase
+        const { data, error: submitError } = await supabase
           .from("project_expense_claims" as never)
           .update({ status: "submitted", submitted_at: new Date().toISOString() })
-          .eq("id", claimId);
+          .eq("id", claimId)
+          .select("status")
+          .single();
+        if (submitError) throw submitError;
+        autoApproved = (data as { status: string }).status === "approved";
       }
 
-      return claimId;
+      return { claimId, autoApproved };
     },
-    onSuccess: async (claimId, vars) => {
+    onSuccess: async ({ claimId, autoApproved }, vars) => {
       invalidateProjectExpenseQueries(qc);
-      toast.success(vars.submit ? "Project expense submitted for approval!" : "Saved as draft");
+      toast.success(
+        !vars.submit ? "Saved as draft" : autoApproved ? "Project expense submitted and auto-approved!" : "Project expense submitted for approval!"
+      );
       if (vars.submit) {
         try {
           await supabase.functions.invoke("send-project-expense-notification", {
-            body: { event: "submitted", claim_id: claimId },
+            body: { event: autoApproved ? "approved" : "submitted", claim_id: claimId },
           });
         } catch (err) {
           console.error("Notification failed:", err);
@@ -444,19 +451,21 @@ export function useSubmitProjectExpenseClaim() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (claimId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("project_expense_claims" as never)
         .update({ status: "submitted", submitted_at: new Date().toISOString() })
-        .eq("id", claimId);
+        .eq("id", claimId)
+        .select("status")
+        .single();
       if (error) throw error;
-      return claimId;
+      return { claimId, autoApproved: (data as { status: string }).status === "approved" };
     },
-    onSuccess: async (claimId) => {
+    onSuccess: async ({ claimId, autoApproved }) => {
       invalidateProjectExpenseQueries(qc);
-      toast.success("Submitted for approval!");
+      toast.success(autoApproved ? "Submitted and auto-approved!" : "Submitted for approval!");
       try {
         await supabase.functions.invoke("send-project-expense-notification", {
-          body: { event: "submitted", claim_id: claimId },
+          body: { event: autoApproved ? "approved" : "submitted", claim_id: claimId },
         });
       } catch (err) {
         console.error("Notification failed:", err);

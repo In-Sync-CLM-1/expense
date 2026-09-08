@@ -9,7 +9,14 @@ const corsHeaders = {
 };
 
 const CLAUDE_VISION_MODEL = "claude-opus-4-8";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+// llama-3.3-70b-versatile was retired by Groq (2026-09, confirmed live: 404
+// model_not_found). This is the PDF-with-text-layer path's only reader --
+// no Claude fallback exists for it (only the no-text-layer/scanned-PDF and
+// direct-image paths fall back to Claude) -- so every text-layer PDF
+// receipt/bill upload was failing outright with "please fill in manually"
+// until this was fixed. openai/gpt-oss-120b confirmed live + tool-calling
+// capable, same replacement already proven on globalcrm/crm/Vendor-Sync.
+const TEXT_MODEL = "openai/gpt-oss-120b";
 
 const EXPENSE_TYPES = [
   "airfare", "train", "bus", "cab", "auto", "fuel",
