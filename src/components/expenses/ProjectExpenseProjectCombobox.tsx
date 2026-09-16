@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatStatusLabel } from "@/lib/utils";
 import { useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/useProjectExpenses";
 
 interface ProjectExpenseProjectComboboxProps {
@@ -15,7 +15,9 @@ interface ProjectExpenseProjectComboboxProps {
 
 // Same live RMPL project list used for Advance Requests, extended with
 // project_number + the resolved Project Owner — this is what auto-fills
-// the header fields and decides who approves the claim.
+// the header fields and decides who approves the claim. Every RMPL
+// status is shown (RMPL's status field is user-entered and often stale),
+// with the status displayed alongside each project for context.
 export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disabled }: ProjectExpenseProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -38,7 +40,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search RMPL projects in execution…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder="Search RMPL projects…" value={search} onValueChange={setSearch} />
           <CommandList>
             {isLoading ? (
               <div className="py-6 flex justify-center">
@@ -48,7 +50,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project in execution.</CommandEmpty>
+                <CommandEmpty>No matching project.</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem
@@ -60,7 +62,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
                       <span className="flex flex-col">
                         <span>{p.project_name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {p.project_number ?? "No project #"} · Owner: {p.project_owner_name ?? "—"}
+                          {p.project_number ?? "No project #"} · {formatStatusLabel(p.status) ?? "No status"} · Owner: {p.project_owner_name ?? "—"}
                         </span>
                       </span>
                     </CommandItem>
