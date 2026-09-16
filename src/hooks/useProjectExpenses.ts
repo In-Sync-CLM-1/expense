@@ -75,6 +75,7 @@ export interface RmplProjectOption {
   id: string;
   project_name: string;
   project_number: string | null;
+  status: string | null;
   project_owner_external_id: string | null;
   project_owner_name: string | null;
   project_owner_email: string | null;

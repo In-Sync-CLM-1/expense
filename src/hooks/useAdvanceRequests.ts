@@ -32,6 +32,7 @@ export interface RmplProject {
   id: string;
   project_name: string;
   project_number: string | null;
+  status: string | null;
 }
 
 /** The signed-in maker's own requests. */
@@ -218,7 +219,7 @@ export function useApprovedUndisbursedRequests(orgId?: string) {
   });
 }
 
-/** RMPL's live projects currently in execution, read-only. */
+/** RMPL's live projects, every status, read-only. */
 export function useRmplProjects(enabled = true) {
   return useQuery({
     queryKey: ["rmpl-projects"],

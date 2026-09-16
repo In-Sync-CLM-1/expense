@@ -13,6 +13,7 @@ interface RmplProjectRow {
   project_name: string;
   project_number: string | null;
   project_owner: string | null;
+  status: string | null;
 }
 
 interface RmplProfileRow {
@@ -21,10 +22,13 @@ interface RmplProfileRow {
   email: string | null;
 }
 
-// Reads RMPL's own project list (a separate Supabase project) filtered
-// to projects currently in execution, so an approver can tag an advance
+// Reads RMPL's own project list (a separate Supabase project) — every
+// status, not just "execution" — so an approver can tag an advance
 // request to the right client project, or a Project Expense claim can be
-// filed against it. RMPL owns this data — Expense only ever reads it.
+// filed against it. RMPL project status is user-entered and often stale
+// (e.g. still "In Discussion" long after the event ran), so it can't be
+// trusted to gate which projects are claimable. RMPL owns this data —
+// Expense only ever reads it.
 // Also resolves each project's owner (RMPL's own profiles.id/full_name/
 // email) and, for the RMPL org's Project Expense flow, matches that
 // owner's email into THIS app's profiles table so the claim can be
@@ -52,10 +56,9 @@ Deno.serve(async (req) => {
     }
 
     const params = new URLSearchParams({
-      select: "id,project_name,project_number,project_owner",
-      status: "eq.execution",
+      select: "id,project_name,project_number,project_owner,status",
       order: "project_name.asc",
-      limit: "200",
+      limit: "5000",
     });
 
     const rmplRes = await fetch(`${rmplUrl}/rest/v1/projects?${params.toString()}`, {
@@ -107,6 +110,7 @@ Deno.serve(async (req) => {
         id: p.id,
         project_name: p.project_name,
         project_number: p.project_number,
+        status: p.status,
         project_owner_external_id: p.project_owner,
         project_owner_name: owner?.full_name ?? null,
         project_owner_email: ownerEmail,

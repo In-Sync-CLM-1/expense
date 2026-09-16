@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatStatusLabel } from "@/lib/utils";
 import { useRmplProjects } from "@/hooks/useAdvanceRequests";
 
 interface RmplProjectComboboxProps {
@@ -14,8 +14,10 @@ interface RmplProjectComboboxProps {
 }
 
 // Project list is read live from RMPL (a separate Supabase project) via
-// the list-rmpl-projects edge function, filtered to projects currently
-// in execution — RMPL owns this data, Expense never creates or edits one.
+// the list-rmpl-projects edge function, every status included — RMPL's
+// status field is user-entered and often stale, so it can't gate which
+// projects are pickable. RMPL owns this data, Expense never creates or
+// edits one.
 export function RmplProjectCombobox({ value, valueName, onChange, disabled }: RmplProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -37,7 +39,7 @@ export function RmplProjectCombobox({ value, valueName, onChange, disabled }: Rm
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search RMPL projects in execution…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder="Search RMPL projects…" value={search} onValueChange={setSearch} />
           <CommandList>
             {isLoading ? (
               <div className="py-6 flex justify-center">
@@ -47,7 +49,7 @@ export function RmplProjectCombobox({ value, valueName, onChange, disabled }: Rm
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project in execution.</CommandEmpty>
+                <CommandEmpty>No matching project.</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem
@@ -58,9 +60,9 @@ export function RmplProjectCombobox({ value, valueName, onChange, disabled }: Rm
                       <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
                       <span className="flex flex-col">
                         <span>{p.project_name}</span>
-                        {p.project_number && (
-                          <span className="text-xs text-muted-foreground">{p.project_number}</span>
-                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {p.project_number ?? "No project #"} · {formatStatusLabel(p.status) ?? "No status"}
+                        </span>
                       </span>
                     </CommandItem>
                   ))}
