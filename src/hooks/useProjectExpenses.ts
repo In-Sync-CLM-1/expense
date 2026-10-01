@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { uploadLineFiles, type LineAttachment } from "@/lib/lineAttachments";
 
 /**
  * RMPL-only "Project Expense" claim type, modeled on RMPL's own
@@ -24,6 +25,7 @@ export interface ProjectExpenseItem {
   grand_total?: number;
   receipt_url?: string | null;
   receipt_name?: string | null;
+  attachments?: LineAttachment[] | null;
   remarks?: string | null;
 }
 
@@ -75,7 +77,6 @@ export interface RmplProjectOption {
   id: string;
   project_name: string;
   project_number: string | null;
-  status: string | null;
   project_owner_external_id: string | null;
   project_owner_name: string | null;
   project_owner_email: string | null;
@@ -353,7 +354,7 @@ interface CreateProjectExpenseClaimInput {
   period: string;
   advanceId: string | null;
   items: Omit<ProjectExpenseItem, "id" | "claim_id" | "grand_total">[];
-  itemFiles: (File | undefined)[]; // parallel to items
+  itemFiles: File[][]; // parallel to items
   travelLogs: Omit<ProjectExpenseTravelLog, "id" | "claim_id">[];
   submit: boolean;
 }
@@ -370,32 +371,25 @@ export function useCreateProjectExpenseClaim() {
       if (error) throw error;
       const claimId = (newClaim as { id: string }).id;
 
+      let failedUploads = 0;
       if (items.length > 0) {
-        const { error: itemsError } = await supabase
+        const { data: createdItems, error: itemsError } = await supabase
           .from("project_expense_claim_items" as never)
-          .insert(items.map((item) => ({ ...item, claim_id: claimId })));
+          .insert(items.map((item) => ({ ...item, claim_id: claimId })))
+          .select("id");
         if (itemsError) throw itemsError;
-      }
 
-      if (itemFiles.some(Boolean)) {
-        const { data: createdItems } = await supabase
-          .from("project_expense_claim_items" as never)
-          .select("id")
-          .eq("claim_id", claimId)
-          .order("created_at", { ascending: true });
-
-        for (let i = 0; i < itemFiles.length; i++) {
-          const file = itemFiles[i];
-          if (!file || !createdItems?.[i]) continue;
-          try {
-            const { url, name } = await uploadProjectExpenseFile(file, claimId);
-            await supabase
-              .from("project_expense_claim_items" as never)
-              .update({ receipt_url: url, receipt_name: name })
-              .eq("id", (createdItems[i] as { id: string }).id);
-          } catch (err) {
-            console.error("Supporting document upload failed for line", i, err);
-          }
+        if (itemFiles.some((f) => f?.length)) {
+          failedUploads = await uploadLineFiles(
+            itemFiles,
+            ((createdItems ?? []) as unknown as { id: string }[]).map((r) => r.id),
+            (f) => uploadProjectExpenseFile(f, claimId),
+            (id, atts) =>
+              supabase
+                .from("project_expense_claim_items" as never)
+                .update({ attachments: atts, receipt_url: atts[0].url, receipt_name: atts[0].name } as never)
+                .eq("id", id),
+          );
         }
       }
 
@@ -425,9 +419,10 @@ export function useCreateProjectExpenseClaim() {
         autoApproved = (data as { status: string }).status === "approved";
       }
 
-      return { claimId, autoApproved };
+      return { claimId, autoApproved, failedUploads };
     },
-    onSuccess: async ({ claimId, autoApproved }, vars) => {
+    onSuccess: async ({ claimId, autoApproved, failedUploads }, vars) => {
+      if (failedUploads > 0) toast.error(`${failedUploads} supporting file(s) failed to upload — open the claim and check the lines.`, { duration: 8000 });
       invalidateProjectExpenseQueries(qc);
       toast.success(
         !vars.submit ? "Saved as draft" : autoApproved ? "Project expense submitted and auto-approved!" : "Project expense submitted for approval!"

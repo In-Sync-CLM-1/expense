@@ -1,10 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Briefcase, MapPin, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { User, Briefcase, MapPin, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useProjectExpenseClaimDetail, type ProjectExpenseClaim } from "@/hooks/useProjectExpenses";
 import { useState } from "react";
+import { AttachmentLinks } from "@/components/expenses/LineAttachments";
+import { attachmentsOf } from "@/lib/lineAttachments";
 
 interface Props {
   claim: ProjectExpenseClaim;
@@ -49,14 +51,10 @@ export function ProjectExpenseApprovalCard({ claim, onApprove, onReject }: Props
         {expanded && detail?.items && (
           <div className="space-y-1.5 pl-3 border-l-2 border-muted">
             {detail.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                <div>
+              <div key={item.id} className="flex items-start justify-between gap-3 text-sm py-1">
+                <div className="min-w-0 break-words [overflow-wrap:anywhere]">
                   <span className="text-muted-foreground">{format(new Date(item.line_date), "MMM d")} · {item.description || item.mode_of_transport || "—"}</span>
-                  {item.receipt_url && (
-                    <a href={item.receipt_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 inline-flex items-center gap-0.5">
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
+                  <AttachmentLinks items={attachmentsOf(item)} />
                 </div>
                 <span className="font-medium whitespace-nowrap">₹{Number(item.grand_total).toLocaleString("en-IN")}</span>
               </div>

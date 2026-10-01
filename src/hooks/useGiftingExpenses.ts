@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { uploadProjectExpenseFile } from "@/hooks/useProjectExpenses";
+import { uploadLineFiles, type LineAttachment } from "@/lib/lineAttachments";
 
 /**
  * RMPL-only "Gifting Expense" claim type — a single claim whose line items
@@ -27,6 +28,7 @@ export interface GiftingExpenseItem {
   amount: number;
   receipt_url?: string | null;
   receipt_name?: string | null;
+  attachments?: LineAttachment[] | null;
 }
 
 export interface GiftingExpenseClaim {
@@ -163,7 +165,7 @@ interface CreateGiftingExpenseClaimInput {
   filer_name: string;
   period: string;
   items: Omit<GiftingExpenseItem, "id" | "claim_id">[];
-  itemFiles: (File | undefined)[]; // parallel to items
+  itemFiles: File[][]; // parallel to items
   submit: boolean;
 }
 
@@ -179,34 +181,29 @@ export function useCreateGiftingExpenseClaim() {
       if (error) throw error;
       const claimId = (newClaim as { id: string }).id;
 
+      let failedUploads = 0;
       if (items.length > 0) {
-        const { error: itemsError } = await supabase
+        const { data: createdItems, error: itemsError } = await supabase
           .from("gifting_expense_claim_items" as never)
-          .insert(items.map((item) => ({ ...item, claim_id: claimId })));
+          .insert(items.map((item) => ({ ...item, claim_id: claimId })))
+          .select("id");
         if (itemsError) throw itemsError;
-      }
 
-      if (itemFiles.some(Boolean)) {
-        const { data: createdItems } = await supabase
-          .from("gifting_expense_claim_items" as never)
-          .select("id")
-          .eq("claim_id", claimId)
-          .order("created_at", { ascending: true });
-
-        for (let i = 0; i < itemFiles.length; i++) {
-          const file = itemFiles[i];
-          if (!file || !createdItems?.[i]) continue;
-          try {
-            const { url, name } = await uploadProjectExpenseFile(file, claimId);
-            await supabase
-              .from("gifting_expense_claim_items" as never)
-              .update({ receipt_url: url, receipt_name: name })
-              .eq("id", (createdItems[i] as { id: string }).id);
-          } catch (err) {
-            console.error("Supporting document upload failed for gifting line", i, err);
-          }
+        if (itemFiles.some((f) => f?.length)) {
+          failedUploads = await uploadLineFiles(
+            itemFiles,
+            ((createdItems ?? []) as unknown as { id: string }[]).map((r) => r.id),
+            (f) => uploadProjectExpenseFile(f, claimId),
+            (id, atts) =>
+              supabase
+                .from("gifting_expense_claim_items" as never)
+                .update({ attachments: atts, receipt_url: atts[0].url, receipt_name: atts[0].name } as never)
+                .eq("id", id),
+          );
         }
       }
+
+      if (failedUploads > 0) toast.error(`${failedUploads} supporting file(s) failed to upload — open the claim and check the lines.`, { duration: 8000 });
 
       if (submit) {
         await supabase
