@@ -5,7 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Loader2, Gift, Paperclip, AlertTriangle, FileSpreadsheet, Download } from "lucide-react";
+import { Plus, Trash2, Loader2, Gift, AlertTriangle, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
@@ -13,6 +13,7 @@ import { useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/usePr
 import { useCreateGiftingExpenseClaim } from "@/hooks/useGiftingExpenses";
 import { downloadGiftingImportTemplate, parseGiftingImportFile } from "@/lib/giftingExcelImport";
 import { useQuery } from "@tanstack/react-query";
+import { LineAttachmentsPicker } from "./LineAttachments";
 
 interface GiftingExpenseClaimDialogProps {
   open: boolean;
@@ -29,16 +30,16 @@ interface DraftLine {
   recipient: string;
   description: string;
   amount: string;
-  file?: File;
+  files: File[];
 }
 
 const emptyLine: DraftLine = {
   line_date: "", rmpl_project_id: null, project_number: null, project_name: "",
-  recipient: "", description: "", amount: "",
+  recipient: "", description: "", amount: "", files: [],
 };
 
 const isLineBlank = (l: DraftLine) =>
-  !l.line_date && !l.project_name && !l.description && !l.recipient && !l.file && (parseFloat(l.amount) || 0) === 0;
+  !l.line_date && !l.project_name && !l.description && !l.recipient && l.files.length === 0 && (parseFloat(l.amount) || 0) === 0;
 
 function useOwnFullName(userId: string) {
   return useQuery({
@@ -84,7 +85,8 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     updated[i] = { ...updated[i], ...patch };
     setLines(updated);
   };
-  const setLineFile = (i: number, file: File | undefined) => updateLine(i, { file });
+  const setLineFiles = (i: number, files: File[]) => updateLine(i, { files });
+  const totalFiles = lines.reduce((n, l) => n + l.files.length, 0);
 
   const matchProject = (projectNumber: string): RmplProjectOption | undefined => {
     const q = projectNumber.trim().toLowerCase();
@@ -113,6 +115,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           recipient: l.recipient,
           description: l.description,
           amount: l.amount,
+          files: [],
         };
       });
 
@@ -168,7 +171,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           description: l.description,
           amount: parseFloat(l.amount) || 0,
         })),
-        itemFiles: activeLines.map((l) => l.file),
+        itemFiles: activeLines.map((l) => l.files),
         submit: !asDraft,
       });
       resetForm();
@@ -180,25 +183,25 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!submitting) { onOpenChange(v); if (!v) resetForm(); } }}>
-      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gift className="h-5 w-5" /> New Gifting Expense
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <p className="text-sm text-muted-foreground">
             Each line here can belong to a different project — no need to file a separate claim per project.
             This goes straight to Accounts for payment; there's no per-project approval step.
           </p>
 
           <div className="grid grid-cols-6 gap-3">
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Name *</Label>
               <Input className="h-9" value={filerName} onChange={(e) => setFilerName(e.target.value)} />
             </div>
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Period</Label>
               <div className="flex items-center gap-1.5">
                 <Input type="date" className="h-9 flex-1" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
@@ -254,24 +257,24 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
               </p>
             )}
 
-            <div className="border rounded-lg overflow-hidden">
-              <div className="grid grid-cols-[112px_1fr_1fr_140px_92px_36px_28px] gap-1.5 px-2 py-1.5 bg-muted text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="border rounded-lg overflow-x-auto">
+              <div className="min-w-[760px]"><div className="grid grid-cols-[112px_minmax(0,1fr)_minmax(0,1fr)_120px_36px_88px_28px] gap-1.5 px-2 py-1.5 bg-muted text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 <span>Date *</span>
                 <span>Project *</span>
                 <span>Description / Recipient</span>
                 <span className="text-right">Amount *</span>
                 <span className="text-center">Doc</span>
-                <span />
+                <span className="text-right">Total</span>
                 <span />
               </div>
               <div className="divide-y">
                 {lines.map((line, index) => (
-                  <div key={index} className="grid grid-cols-[112px_1fr_1fr_140px_92px_36px_28px] gap-1.5 px-2 py-1 items-center">
+                  <div key={index} className="grid grid-cols-[112px_minmax(0,1fr)_minmax(0,1fr)_120px_36px_88px_28px] gap-1.5 px-2 py-1 items-center">
                     <Input
                       type="date" className="h-8 text-xs px-1.5"
                       value={line.line_date} onChange={(e) => updateLine(index, { line_date: e.target.value })}
                     />
-                    <div className={!line.rmpl_project_id && !isLineBlank(line) ? "ring-1 ring-destructive rounded-md" : ""}>
+                    <div className={`min-w-0 ${!line.rmpl_project_id && !isLineBlank(line) ? "ring-1 ring-destructive rounded-md" : ""}`}>
                       <ProjectExpenseProjectCombobox
                         value={line.rmpl_project_id}
                         valueName={line.project_name || line.project_number || undefined}
@@ -280,13 +283,13 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                         })}
                       />
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 min-w-0">
                       <Input
-                        className="h-8 text-xs px-1.5" placeholder="Description"
+                        className="h-8 text-xs px-1.5 min-w-0" placeholder="Description"
                         value={line.description} onChange={(e) => updateLine(index, { description: e.target.value })}
                       />
                       <Input
-                        className="h-8 text-xs px-1.5" placeholder="Recipient / occasion"
+                        className="h-8 text-xs px-1.5 min-w-0" placeholder="Recipient / occasion"
                         value={line.recipient} onChange={(e) => updateLine(index, { recipient: e.target.value })}
                       />
                     </div>
@@ -295,20 +298,13 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                       value={line.amount} onChange={(e) => updateLine(index, { amount: e.target.value })}
                     />
                     <div className="flex items-center justify-center">
-                      <input
-                        type="file" id={`gifting-line-file-${index}`} className="sr-only"
-                        accept="image/*,.pdf"
-                        onChange={(e) => setLineFile(index, e.target.files?.[0])}
+                      <LineAttachmentsPicker
+                        files={line.files}
+                        otherLinesTotal={totalFiles - line.files.length}
+                        onChange={(f) => setLineFiles(index, f)}
                       />
-                      <label
-                        htmlFor={`gifting-line-file-${index}`}
-                        title={line.file?.name || "Attach supporting document"}
-                        className={`h-8 w-8 flex items-center justify-center rounded border cursor-pointer hover:bg-muted ${line.file ? "border-primary text-primary" : "text-muted-foreground"}`}
-                      >
-                        <Paperclip className="h-3.5 w-3.5" />
-                      </label>
                     </div>
-                    <span className="text-xs font-semibold text-right pr-1">
+                    <span className="text-xs font-semibold text-right pr-1 truncate">
                       {(parseFloat(line.amount) || 0) > 0 ? `₹${(parseFloat(line.amount) || 0).toLocaleString("en-IN")}` : ""}
                     </span>
                     <Button
@@ -319,6 +315,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
                     </Button>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={addLine}>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Briefcase, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrentUser } from "@/hooks/useExpenseClaims";
 import { useOrg } from "@/contexts/OrgContext";
@@ -15,6 +15,8 @@ import {
   type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
 import { ProjectExpenseClaimDialog } from "@/components/expenses/ProjectExpenseClaimDialog";
+import { AttachmentLinks } from "@/components/expenses/LineAttachments";
+import { attachmentsOf } from "@/lib/lineAttachments";
 
 export default function ProjectExpenses() {
   const { currentOrg } = useOrg();
@@ -123,16 +125,12 @@ export default function ProjectExpenses() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold">Expense Lines</p>
                 {selectedClaim.items?.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm border rounded p-2">
-                    <div>
+                  <div key={item.id} className="flex items-start justify-between gap-3 text-sm border rounded p-2">
+                    <div className="min-w-0 break-words [overflow-wrap:anywhere]">
                       <span>{format(new Date(item.line_date), "MMM d, yyyy")} · {item.description || item.mode_of_transport}</span>
-                      {item.receipt_url && (
-                        <a href={item.receipt_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 inline-flex items-center gap-0.5">
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
+                      <AttachmentLinks items={attachmentsOf(item)} />
                     </div>
-                    <span className="font-medium">₹{Number(item.grand_total).toLocaleString("en-IN")}</span>
+                    <span className="font-medium shrink-0">₹{Number(item.grand_total).toLocaleString("en-IN")}</span>
                   </div>
                 ))}
               </div>
