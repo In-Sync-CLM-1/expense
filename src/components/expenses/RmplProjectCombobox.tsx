@@ -21,12 +21,9 @@ interface RmplProjectComboboxProps {
 export function RmplProjectCombobox({ value, valueName, onChange, disabled }: RmplProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const { data: projects = [], isLoading, isError } = useRmplProjects(open);
+  const { data: projects = [], isLoading, isError } = useRmplProjects(open, search);
 
-  const q = search.trim().toLowerCase();
-  const filtered = projects.filter(
-    (p) => p.project_name.toLowerCase().includes(q) || (p.project_number ?? "").toLowerCase().includes(q)
-  );
+  const filtered = projects; // already filtered server-side
   const selectedName = projects.find((p) => p.id === value)?.project_name || valueName;
 
   return (

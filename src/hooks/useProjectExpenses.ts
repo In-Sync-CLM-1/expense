@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -115,17 +116,33 @@ export function getProjectExpenseStatusColor(
 
 // ─── RMPL project picker (with project number + resolved owner) ──────────────
 
-export function useRmplProjectsForExpense(enabled = true) {
+/**
+ * Searches RMPL projects by name or project number. RMPL has more projects than
+ * one read can return, so nothing loads the whole list: the picker sends what
+ * the user typed (debounced) and gets the matches back. With no search text it
+ * returns the most recently created projects.
+ */
+export function useRmplProjectsForExpense(enabled = true, search = "") {
+  const term = useDebouncedValue(search.trim(), 250);
   return useQuery({
-    queryKey: ["rmpl-projects-for-project-expense"],
+    queryKey: ["rmpl-projects-for-project-expense", term],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("list-rmpl-projects");
+      const { data, error } = await supabase.functions.invoke("list-rmpl-projects", { body: { search: term } });
       if (error) throw new Error("Could not load projects from RMPL");
       return (data?.projects || []) as RmplProjectOption[];
     },
     enabled,
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
+}
+
+/** Resolves exact project numbers / names (Excel import) in one call. */
+export async function lookupRmplProjects(numbers: string[]): Promise<RmplProjectOption[]> {
+  if (numbers.length === 0) return [];
+  const { data, error } = await supabase.functions.invoke("list-rmpl-projects", { body: { numbers } });
+  if (error) throw new Error("Could not load projects from RMPL");
+  return (data?.projects || []) as RmplProjectOption[];
 }
 
 // ─── Advance picker: filer's own disbursed, unconsumed advances for a project ─
