@@ -23,7 +23,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
   const [search, setSearch] = useState("");
   const { data: projects = [], isLoading, isError } = useRmplProjectsForExpense(open, search);
 
-  const filtered = projects; // already filtered server-side
+  const filtered = search.trim() ? projects : []; // searched server-side; nothing shown until typing
   const selected = projects.find((p) => p.id === value);
   const selectedName = selected?.project_name || valueName;
 
@@ -47,7 +47,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project.</CommandEmpty>
+                <CommandEmpty>{search.trim() ? "No matching project." : "Type a project name or number to search."}</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem

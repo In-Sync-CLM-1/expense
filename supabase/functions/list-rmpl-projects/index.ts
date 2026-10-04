@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     // at 1,000 rows, so the picker never loads the whole list. It searches
     // instead: `search` (name or project number), `ids` (resolve a saved
     // selection) or `numbers` (exact project numbers / names, for the Excel
-    // import). With none of them, the 50 most recently created are returned.
+    // import). With none of them nothing is fetched.
     const body = await req.json().catch(() => ({})) as {
       search?: string;
       ids?: string[];
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner,status",
       order: "project_name.asc",
-      limit: "50",
+      limit: "20",
     });
     const ids = (body.ids ?? []).filter((v) => /^[0-9a-f-]{36}$/i.test(v)).slice(0, 200);
     const numbers = (body.numbers ?? []).map((v) => String(v).trim()).filter(Boolean).slice(0, 500);
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     } else if (term) {
       params.set("or", `(project_name.ilike.*${term}*,project_number.ilike.*${term}*)`);
     } else {
-      params.set("order", "created_at.desc");
+      return jsonResponse({ projects: [] });
     }
 
     const rmplRes = await fetch(`${rmplUrl}/rest/v1/projects?${params.toString()}`, {

@@ -230,7 +230,7 @@ export function useRmplProjects(enabled = true, search = "") {
       if (error) throw new Error("Could not load projects from RMPL");
       return (data?.projects || []) as RmplProject[];
     },
-    enabled,
+    enabled: enabled && term.length > 0,
     staleTime: 60_000,
     placeholderData: keepPreviousData,
   });

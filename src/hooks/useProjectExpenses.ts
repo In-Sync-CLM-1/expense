@@ -119,8 +119,8 @@ export function getProjectExpenseStatusColor(
 /**
  * Searches RMPL projects by name or project number. RMPL has more projects than
  * one read can return, so nothing loads the whole list: the picker sends what
- * the user typed (debounced) and gets the matches back. With no search text it
- * returns the most recently created projects.
+ * the user typed (debounced) and gets the matches back. Nothing is fetched until the
+ * user has typed something.
  */
 export function useRmplProjectsForExpense(enabled = true, search = "") {
   const term = useDebouncedValue(search.trim(), 250);
@@ -131,7 +131,7 @@ export function useRmplProjectsForExpense(enabled = true, search = "") {
       if (error) throw new Error("Could not load projects from RMPL");
       return (data?.projects || []) as RmplProjectOption[];
     },
-    enabled,
+    enabled: enabled && term.length > 0,
     staleTime: 60_000,
     placeholderData: keepPreviousData,
   });
