@@ -9,7 +9,7 @@ import { Plus, Trash2, Loader2, Gift, Paperclip, AlertTriangle, FileSpreadsheet,
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
-import { useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/useProjectExpenses";
+import { lookupRmplProjects, type RmplProjectOption } from "@/hooks/useProjectExpenses";
 import { useCreateGiftingExpenseClaim } from "@/hooks/useGiftingExpenses";
 import { downloadGiftingImportTemplate, parseGiftingImportFile } from "@/lib/giftingExcelImport";
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +56,6 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const { data: ownName } = useOwnFullName(userId);
-  const { data: rmplProjects = [] } = useRmplProjectsForExpense(open);
 
   const [filerName, setFilerName] = useState("");
   const [periodFrom, setPeriodFrom] = useState("");
@@ -86,7 +85,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   };
   const setLineFile = (i: number, file: File | undefined) => updateLine(i, { file });
 
-  const matchProject = (projectNumber: string): RmplProjectOption | undefined => {
+  const matchProject = (rmplProjects: RmplProjectOption[], projectNumber: string): RmplProjectOption | undefined => {
     const q = projectNumber.trim().toLowerCase();
     return (
       rmplProjects.find((p) => (p.project_number ?? "").trim().toLowerCase() === q) ||
@@ -101,9 +100,10 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     try {
       const { lines: parsedLines, errors } = await parseGiftingImportFile(file);
 
+      const rmplProjects = await lookupRmplProjects([...new Set(parsedLines.map((l) => l.project_number.trim()).filter(Boolean))]);
       let unmatched = 0;
       const resolved: DraftLine[] = parsedLines.map((l) => {
-        const match = matchProject(l.project_number);
+        const match = matchProject(rmplProjects, l.project_number);
         if (!match) unmatched++;
         return {
           line_date: l.line_date,

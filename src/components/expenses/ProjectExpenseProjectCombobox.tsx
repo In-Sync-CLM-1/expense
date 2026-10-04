@@ -21,12 +21,9 @@ interface ProjectExpenseProjectComboboxProps {
 export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disabled }: ProjectExpenseProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const { data: projects = [], isLoading, isError } = useRmplProjectsForExpense(open);
+  const { data: projects = [], isLoading, isError } = useRmplProjectsForExpense(open, search);
 
-  const q = search.trim().toLowerCase();
-  const filtered = projects.filter(
-    (p) => p.project_name.toLowerCase().includes(q) || (p.project_number ?? "").toLowerCase().includes(q)
-  );
+  const filtered = search.trim() ? projects : []; // searched server-side; nothing shown until typing
   const selected = projects.find((p) => p.id === value);
   const selectedName = selected?.project_name || valueName;
 
@@ -50,7 +47,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project.</CommandEmpty>
+                <CommandEmpty>{search.trim() ? "No matching project." : "Type a project name or number to search."}</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem
