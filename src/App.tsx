@@ -29,6 +29,7 @@ import PlatformLayout from "./pages/platform/PlatformLayout";
 import CommandCenter from "./pages/platform/CommandCenter";
 import PlatformOrgs from "./pages/platform/PlatformOrgs";
 import PlatformUsers from "./pages/platform/PlatformUsers";
+import { LedgerAccessTrail } from "@/lib/LedgerAccessTrail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ export default function App() {
                   survive navigation, tab-focus session revalidation, etc. */}
               <ExpenseClaimDialogProvider>
               <BrowserRouter>
+                <LedgerAccessTrail />
                 <Routes>
                   {/* Public */}
                   <Route path="/" element={<RootRoute />} />
