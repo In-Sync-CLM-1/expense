@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
   type TeamRow,
 } from "@/lib/expenseExport";
 import { EChart, viz, vizAxisLabel, vizSplitLine, vizTooltip } from "@/components/charts/EChart";
+import { UrlTabs } from "@/components/UrlTabs";
 
 // Compact INR in Indian units — matches the org's own ₹…L stat-card convention
 const inr = (n: number): string => {
@@ -539,7 +540,7 @@ export default function Reports() {
         </div>
       )}
 
-      <Tabs defaultValue="overview">
+      <UrlTabs param="reports_tab" defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
@@ -1019,7 +1020,7 @@ export default function Reports() {
             </Card>
           </TabsContent>
         )}
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

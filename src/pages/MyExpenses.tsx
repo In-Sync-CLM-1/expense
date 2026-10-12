@@ -15,12 +15,13 @@ import { useOrg } from "@/contexts/OrgContext";
 import { MyAdvanceSummary } from "@/components/expenses/MyAdvanceSummary";
 import { MyAdvanceRequestsList } from "@/components/expenses/MyAdvanceRequestsList";
 import { useExpenseClaimDialog } from "@/contexts/ExpenseClaimDialogContext";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export default function MyExpenses() {
   const { openNewClaim } = useExpenseClaimDialog();
   const [requestAdvanceOpen, setRequestAdvanceOpen] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const { currentOrg } = useOrg();
 
   const { data: user } = useCurrentUser();

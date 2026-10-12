@@ -15,12 +15,13 @@ import {
   type GiftingExpenseClaim,
 } from "@/hooks/useGiftingExpenses";
 import { GiftingExpenseClaimDialog } from "@/components/expenses/GiftingExpenseClaimDialog";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export default function GiftingExpenses() {
   const { currentOrg } = useOrg();
   const { data: user } = useCurrentUser();
   const [newOpen, setNewOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
 
   const { data: claims, isLoading } = useMyGiftingExpenseClaims(user?.id);
