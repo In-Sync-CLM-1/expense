@@ -41,6 +41,7 @@ import {
   type ReconciliationRow,
 } from "@/hooks/useAdvances";
 import { useApprovedUndisbursedRequests, type AdvanceRequest } from "@/hooks/useAdvanceRequests";
+import { useUrlState } from "@/hooks/useUrlState";
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -53,7 +54,7 @@ export default function Advances() {
   const { data: reconciliation, isLoading } = useAdvanceReconciliation(currentOrg?.id, canAccess);
   const { data: register } = useAdvancesList(canAccess ? currentOrg?.id : undefined);
   const { data: undisbursed } = useApprovedUndisbursedRequests(canAccess ? currentOrg?.id : undefined);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [recordOpen, setRecordOpen] = useState(false);
   const [fundRequest, setFundRequest] = useState<AdvanceRequest | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);

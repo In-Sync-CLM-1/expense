@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { getRoleDisplayName, getRoleVariant } from "@/lib/rolePermissions";
+import { useUrlState } from "@/hooks/useUrlState";
 
 interface Profile {
   id: string;
@@ -76,7 +77,7 @@ export default function Users() {
   const { permissions } = useUserPermissions();
   const { currentOrg } = useOrg();
   const { data: users, isLoading } = useUsers(currentOrg?.id);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<Profile | null>(null);
 

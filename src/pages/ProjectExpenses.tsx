@@ -15,12 +15,13 @@ import {
   type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
 import { ProjectExpenseClaimDialog } from "@/components/expenses/ProjectExpenseClaimDialog";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export default function ProjectExpenses() {
   const { currentOrg } = useOrg();
   const { data: user } = useCurrentUser();
   const [newOpen, setNewOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
 
   const { data: claims, isLoading } = useMyProjectExpenseClaims(user?.id);

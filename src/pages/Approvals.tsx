@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,7 @@ import {
   useAllGiftingExpenseClaims, useMarkGiftingExpenseReimbursed,
   getGiftingStatusColor, getGiftingStatusLabel,
 } from "@/hooks/useGiftingExpenses";
+import { UrlTabs } from "@/components/UrlTabs";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
@@ -114,7 +115,7 @@ export default function Approvals() {
         <p className="text-muted-foreground">Review and approve team expense claims</p>
       </div>
 
-      <Tabs defaultValue="claims">
+      <UrlTabs param="approvals_tab" defaultValue="claims">
         <TabsList>
           <TabsTrigger value="claims" className="flex gap-2">
             Expense Claims
@@ -150,7 +151,7 @@ export default function Approvals() {
 
         {/* Expense Claims */}
         <TabsContent value="claims" className="mt-4">
-          <Tabs defaultValue="pending">
+          <UrlTabs param="approvals_tab2" defaultValue="pending">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <TabsList>
                 <TabsTrigger value="pending" className="flex gap-2">
@@ -217,12 +218,12 @@ export default function Approvals() {
                 ))
               )}
             </TabsContent>
-          </Tabs>
+          </UrlTabs>
         </TabsContent>
 
         {/* Advance Requests */}
         <TabsContent value="advances" className="mt-4">
-          <Tabs defaultValue="pending">
+          <UrlTabs param="approvals_tab3" defaultValue="pending">
             <TabsList>
               <TabsTrigger value="pending" className="flex gap-2">
                 Pending
@@ -284,7 +285,7 @@ export default function Approvals() {
                 ))
               )}
             </TabsContent>
-          </Tabs>
+          </UrlTabs>
         </TabsContent>
 
         {/* Project Expenses (RMPL only) */}
@@ -437,7 +438,7 @@ export default function Approvals() {
             </div>
           </TabsContent>
         )}
-      </Tabs>
+      </UrlTabs>
 
       {/* Reject Project Expense Dialog */}
       <Dialog open={!!rejectPE} onOpenChange={(o) => { if (!o) setRejectPE(null); }}>
