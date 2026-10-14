@@ -5,6 +5,7 @@ import { User, Briefcase, MapPin, ExternalLink, CheckCircle, XCircle } from "luc
 import { format } from "date-fns";
 import { useProjectExpenseClaimDetail, type ProjectExpenseClaim } from "@/hooks/useProjectExpenses";
 import { useState } from "react";
+import { RmplExpenseFiles } from "@/components/expenses/RmplExpenseFiles";
 
 interface Props {
   claim: ProjectExpenseClaim;
@@ -45,6 +46,8 @@ export function ProjectExpenseApprovalCard({ claim, onApprove, onReject }: Props
         <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setExpanded(!expanded)}>
           {expanded ? "Hide" : "View"} expense details
         </Button>
+
+        {expanded && <RmplExpenseFiles claimId={claim.id} />}
 
         {expanded && detail?.items && (
           <div className="space-y-1.5 pl-3 border-l-2 border-muted">
