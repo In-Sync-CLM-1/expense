@@ -141,7 +141,7 @@ export default function Approvals() {
           )}
           {isRmpl && (permissions.isAdmin || permissions.isAccounts) && (
             <TabsTrigger value="gifting" className="flex gap-2 items-center">
-              <Gift className="h-3.5 w-3.5" /> Gifting
+              <Gift className="h-3.5 w-3.5" /> Field expenses
               {giftingAwaitingPayment.length > 0 && (
                 <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{giftingAwaitingPayment.length}</Badge>
               )}
@@ -392,7 +392,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
@@ -423,7 +423,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>

@@ -183,7 +183,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
       <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" /> New Gifting Expense
+            <Gift className="h-5 w-5" /> New Field Expense
           </DialogTitle>
         </DialogHeader>
 
@@ -211,7 +211,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           {/* Gifting lines */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">Gifting Lines</Label>
+              <Label className="text-sm font-semibold">Field Expense Lines</Label>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -322,7 +322,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-2" /> Add Gifting Line
+              <Plus className="h-4 w-4 mr-2" /> Add Field Expense Line
             </Button>
           </div>
 

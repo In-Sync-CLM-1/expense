@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ export default function MyExpenses() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <ClaimTypeTabs />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

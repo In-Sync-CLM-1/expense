@@ -20,7 +20,7 @@ export async function downloadGiftingImportTemplate() {
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, sheet, "Gifting Expenses");
+  XLSX.utils.book_append_sheet(wb, sheet, "Field Expenses");
   XLSX.writeFile(wb, `gifting-expense-template-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
 }
 
@@ -45,7 +45,7 @@ export async function parseGiftingImportFile(file: File): Promise<GiftingImportR
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
 
-  const sheetName = wb.SheetNames.find((n) => n.toLowerCase().includes("gifting")) ?? wb.SheetNames[0];
+  const sheetName = wb.SheetNames.find((n) => (n.toLowerCase().includes("field") || n.toLowerCase().includes("gifting"))) ?? wb.SheetNames[0];
   const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
   const lines: ParsedGiftingLine[] = [];
   const errors: string[] = [];

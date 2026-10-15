@@ -5,8 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrg } from "@/contexts/OrgContext";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { TopNav, Brand } from "@/components/TopNav";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -74,39 +73,36 @@ export function AppLayout() {
   const userRoles = orgRole ? [orgRole] : [];
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar user={user} userRoles={userRoles} onLogout={handleLogout} currentOrg={currentOrg} />
-        <main className="flex-1 overflow-auto">
-          {/* Top bar */}
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              {/* Org switcher */}
-              {orgs.length > 1 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                      <Building2 className="h-3.5 w-3.5" />
-                      {currentOrg?.name}
-                      <ChevronDown className="h-3 w-3 opacity-60" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {orgs.map((m) => (
-                      <DropdownMenuItem
-                        key={m.org_id}
-                        onClick={() => switchOrg(m.org_id)}
-                        className={m.org_id === currentOrg?.id ? "font-semibold" : ""}
-                      >
-                        <Building2 className="h-4 w-4 mr-2" />
-                        {m.organization.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 bg-card border-b border-border px-4 sm:px-8 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 sm:gap-8 min-w-0">
+          <Brand name={currentOrg?.name} />
+          <TopNav userRoles={userRoles} currentOrg={currentOrg} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {orgs.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{currentOrg?.name}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {orgs.map((m) => (
+                  <DropdownMenuItem
+                    key={m.org_id}
+                    onClick={() => switchOrg(m.org_id)}
+                    className={m.org_id === currentOrg?.id ? "font-semibold" : ""}
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    {m.organization.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 h-9 px-2">
@@ -133,10 +129,11 @@ export function AppLayout() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-          <Outlet />
-        </main>
-      </div>
-    </SidebarProvider>
+        </div>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+    </div>
   );
 }

@@ -1,87 +1,248 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Loader2, Receipt, Clock, CheckCircle2, IndianRupee, ShieldCheck, BarChart3 } from "lucide-react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCurrentUser, useExpenseClaims, useOrgExpenseSummary } from "@/hooks/useExpenseClaims";
+import { useQuery } from "@tanstack/react-query";
+import { format, isSameMonth } from "date-fns";
+import { Loader2, PartyPopper } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrg } from "@/contexts/OrgContext";
+import { isRmplOrg } from "@/lib/rmplOrg";
+import { useExpenseClaimDialog } from "@/contexts/ExpenseClaimDialogContext";
+import { useCurrentUser, useExpenseClaims, usePendingApprovals } from "@/hooks/useExpenseClaims";
+import { useMyProjectExpenseClaims, usePendingProjectOwnerApprovals } from "@/hooks/useProjectExpenses";
+import { useMyGiftingExpenseClaims } from "@/hooks/useGiftingExpenses";
+import { usePendingAdvanceRequests } from "@/hooks/useAdvanceRequests";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { computeScore, type ScoreClaim } from "@/lib/gamification";
+import { ScoreCard } from "@/components/home/ScoreCard";
+
+type Kind = "travel" | "project" | "field";
+
+interface Row {
+  id: string;
+  kind: Kind;
+  title: string;
+  kindLabel: string;
+  amount: number;
+  status: string;
+  submitted_at: string | null;
+  created_at: string;
+  reimbursed_at: string | null;
+  rejection_reason: string | null;
+  endDate: string | null;
+  to: string;
+}
+
+const KIND_LABEL: Record<Kind, string> = { travel: "Travel", project: "Project", field: "Field expense" };
+const KIND_PATH: Record<Kind, string> = { travel: "/my-expenses", project: "/project-expenses", field: "/field-expenses" };
+
+/** Plain-language status; field expenses skip approval so "submitted" means waiting for payment. */
+function statusInfo(kind: Kind, status: string): { label: string; tone: "grey" | "blue" | "teal" | "amber" } {
+  if (status === "draft") return { label: "Draft", tone: "grey" };
+  if (status === "rejected") return { label: "Returned", tone: "amber" };
+  if (status === "reimbursed") return { label: "Paid", tone: "teal" };
+  if (status === "approved") return { label: "Approved", tone: "teal" };
+  if (status === "submitted") return kind === "field" ? { label: "Awaiting payment", tone: "blue" } : { label: "With approver", tone: "blue" };
+  return { label: status, tone: "grey" };
+}
+
+const TONE: Record<string, string> = {
+  grey: "bg-muted text-muted-foreground",
+  blue: "bg-blue-100 text-blue-900",
+  teal: "bg-primary/10 text-primary",
+  amber: "bg-amber-100 text-amber-900",
+};
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
+function useFirstName(userId?: string) {
+  return useQuery({
+    queryKey: ["home-first-name", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles" as never).select("full_name").eq("id", userId!).single();
+      const full = (data as { full_name?: string } | null)?.full_name ?? "";
+      return full.split(" ")[0] || "";
+    },
+  });
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { data: user } = useCurrentUser();
-  const { data: myClaims, isLoading } = useExpenseClaims(user?.id);
+  const { openNewClaim } = useExpenseClaimDialog();
+  const { currentOrg } = useOrg();
+  const isRmpl = isRmplOrg(currentOrg?.id);
   const { permissions } = useUserPermissions();
-  const { data: org } = useOrgExpenseSummary();
+  const { data: user } = useCurrentUser();
+  const { data: firstName } = useFirstName(user?.id);
 
-  const my = {
-    total: myClaims?.length ?? 0,
-    pending: myClaims?.filter((c) => c.status === "submitted").length ?? 0,
-    approved: myClaims?.filter((c) => c.status === "approved" || c.status === "reimbursed").length ?? 0,
-    totalAmount: myClaims?.reduce((s, c) => s + Number(c.total_amount), 0) ?? 0,
-  };
+  const { data: travel, isLoading: l1 } = useExpenseClaims(user?.id);
+  const { data: project, isLoading: l2 } = useMyProjectExpenseClaims(isRmpl ? user?.id : undefined);
+  const { data: field, isLoading: l3 } = useMyGiftingExpenseClaims(isRmpl ? user?.id : undefined);
+
+  const showApprover = permissions.canApproveExpenses || isRmpl;
+  const { data: pTravel } = usePendingApprovals(showApprover ? user?.id : undefined);
+  const { data: pAdv } = usePendingAdvanceRequests(showApprover ? user?.id : undefined);
+  const { data: pProj } = usePendingProjectOwnerApprovals(showApprover && isRmpl ? user?.id : undefined);
+  const toReview = (pTravel?.length ?? 0) + (pAdv?.length ?? 0) + (pProj?.length ?? 0);
+
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = [];
+    for (const c of travel ?? []) {
+      out.push({
+        id: c.id, kind: "travel", title: c.trip_title, kindLabel: KIND_LABEL.travel,
+        amount: Number(c.approved_amount ?? c.total_amount ?? 0), status: c.status,
+        submitted_at: c.submitted_at, created_at: c.created_at, reimbursed_at: c.reimbursed_at,
+        rejection_reason: c.rejection_reason, endDate: c.trip_end_date, to: KIND_PATH.travel,
+      });
+    }
+    for (const c of project ?? []) {
+      out.push({
+        id: c.id, kind: "project", title: c.project_name, kindLabel: KIND_LABEL.project,
+        amount: Number(c.net_balance ?? c.actual_expense_total ?? 0), status: c.status,
+        submitted_at: c.submitted_at, created_at: c.created_at, reimbursed_at: c.reimbursed_at,
+        rejection_reason: c.rejection_reason, endDate: null, to: KIND_PATH.project,
+      });
+    }
+    for (const c of field ?? []) {
+      out.push({
+        id: c.id, kind: "field", title: c.period ? `Field expenses · ${c.period}` : "Field expenses",
+        kindLabel: KIND_LABEL.field, amount: Number(c.total_amount ?? 0), status: c.status,
+        submitted_at: c.submitted_at, created_at: c.created_at, reimbursed_at: c.reimbursed_at,
+        rejection_reason: null, endDate: null, to: KIND_PATH.field,
+      });
+    }
+    return out.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [travel, project, field]);
+
+  const now = new Date();
+  const waiting = rows.filter((r) => r.status === "submitted" && r.kind !== "field");
+  const beingPaid = rows.filter((r) => r.status === "approved" || (r.kind === "field" && r.status === "submitted"));
+  const paidThisMonth = rows.filter((r) => r.status === "reimbursed" && r.reimbursed_at && isSameMonth(new Date(r.reimbursed_at), now));
+  const returned = rows.filter((r) => r.status === "rejected");
+  const sum = (xs: Row[]) => xs.reduce((s, r) => s + r.amount, 0);
+
+  const score = useMemo(
+    () => computeScore(rows.map<ScoreClaim>((r) => ({ kind: r.kind, status: r.status, submitted_at: r.submitted_at, endDate: r.endDate }))),
+    [rows],
+  );
+
+  const loading = l1 || l2 || l3;
+  const allCaughtUp = showApprover && toReview === 0;
+  const owed = sum(beingPaid);
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back{user?.email ? `, ${user.email}` : ""}!</p>
+    <div className="mx-auto max-w-6xl px-4 sm:px-8 py-8 space-y-8">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold">{firstName ? `Hello, ${firstName}` : "Hello"}</h1>
+          <p className="text-muted-foreground mt-1 text-lg">
+            {owed > 0 ? `${inr(owed)} is on its way to you.` : "Nothing is waiting to be paid to you."}
+            {returned.length > 0 ? ` ${returned.length === 1 ? "One claim needs" : `${returned.length} claims need`} your attention.` : ""}
+          </p>
+        </div>
+        <Button size="lg" onClick={openNewClaim}>+ New claim</Button>
       </div>
 
-      {/* My expenses */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Receipt className="h-5 w-5" /> My Expense Claims
-        </h2>
-        {isLoading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-        ) : (
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <StatCard icon={<Receipt className="h-4 w-4 text-blue-500" />} label="Total Claims" value={my.total} />
-            <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending" value={my.pending} highlight={my.pending > 0} />
-            <StatCard icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} label="Approved" value={my.approved} />
-            <StatCard icon={<IndianRupee className="h-4 w-4 text-purple-500" />} label="Total Claimed" value={`₹${my.totalAmount.toLocaleString("en-IN")}`} />
-          </div>
-        )}
-        <Button className="mt-4" onClick={() => navigate("/my-expenses")}>
-          <Receipt className="h-4 w-4 mr-2" /> View My Claims
-        </Button>
-      </section>
-
-      {/* Org summary (admin/manager) */}
-      {permissions.canApproveExpenses && org && (
-        <section>
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" /> Organisation Overview
-          </h2>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <StatCard icon={<Receipt className="h-4 w-4 text-blue-500" />} label="Total Claims" value={org.total} />
-            <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Awaiting Approval" value={org.submitted} highlight={org.submitted > 0} />
-            <StatCard icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} label="Approved" value={org.approved} />
-            <StatCard icon={<IndianRupee className="h-4 w-4 text-green-500" />} label="Approved Amount" value={`₹${org.approvedAmount.toLocaleString("en-IN")}`} />
-          </div>
-          <div className="flex gap-2 mt-4 flex-wrap">
-            <Button variant="outline" onClick={() => navigate("/approvals")}>
-              <ShieldCheck className="h-4 w-4 mr-2" /> Go to Approvals
-            </Button>
-            {permissions.canViewReports && (
-              <Button variant="outline" onClick={() => navigate("/reports")}>
-                <BarChart3 className="h-4 w-4 mr-2" /> View Reports
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <>
+          {returned.slice(0, 2).map((r) => (
+            <div key={r.id} className="rounded-2xl border border-amber-300 bg-amber-50 p-5 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div className="font-bold text-amber-900">Returned: needs a fix</div>
+                <div className="text-amber-900/90 mt-1">
+                  {r.title}{r.rejection_reason ? ` · "${r.rejection_reason}"` : ""}
+                </div>
+              </div>
+              <Button variant="outline" className="border-amber-700 text-amber-900" onClick={() => navigate(r.to)}>
+                Fix and resubmit
               </Button>
-            )}
+            </div>
+          ))}
+
+          {showApprover && (
+            <div
+              className={`rounded-2xl border p-5 flex items-center justify-between gap-4 flex-wrap ${
+                allCaughtUp ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+              }`}
+            >
+              {allCaughtUp ? (
+                <div className="flex items-center gap-3 font-bold text-primary">
+                  <PartyPopper className="h-6 w-6" aria-hidden="true" /> Inbox zero. Everything you review is done.
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="font-bold">{toReview} waiting for your review</div>
+                    <div className="text-muted-foreground mt-1">The people you approve for are waiting on you.</div>
+                  </div>
+                  <Button onClick={() => navigate("/approvals")}>Review now</Button>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="grid gap-5 sm:grid-cols-3">
+            <Stat label="Waiting for approval" value={inr(sum(waiting))} note={`${waiting.length} ${waiting.length === 1 ? "claim" : "claims"}`} />
+            <Stat label="Approved, being paid" value={inr(sum(beingPaid))} note={`${beingPaid.length} ${beingPaid.length === 1 ? "claim" : "claims"}`} accent />
+            <Stat label="Paid this month" value={inr(sum(paidThisMonth))} note={`${paidThisMonth.length} ${paidThisMonth.length === 1 ? "claim" : "claims"}`} />
           </div>
-        </section>
+
+          <div className="grid gap-6 lg:grid-cols-5">
+            <Card className="lg:col-span-3 overflow-hidden">
+              <div className="px-5 py-4 font-bold border-b">Recent claims</div>
+              {rows.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  No claims yet. Start your first one and earn your first badge.
+                </div>
+              ) : (
+                <ul>
+                  {rows.slice(0, 6).map((r) => {
+                    const st = statusInfo(r.kind, r.status);
+                    return (
+                      <li key={`${r.kind}-${r.id}`} className="border-b last:border-0">
+                        <button
+                          type="button"
+                          onClick={() => navigate(r.to)}
+                          className="w-full text-left px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-muted/50 min-h-[56px]"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-bold truncate">{r.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {r.kindLabel} · {format(new Date(r.created_at), "d MMM")}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="font-medium">{inr(r.amount)}</span>
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE[st.tone]}`}>{st.label}</span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+            <div className="lg:col-span-2">
+              <ScoreCard score={score} />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, highlight }: {
-  icon: React.ReactNode; label: string; value: React.ReactNode; highlight?: boolean;
-}) {
+function Stat({ label, value, note, accent }: { label: string; value: string; note: string; accent?: boolean }) {
   return (
-    <Card className={highlight ? "border-yellow-300" : ""}>
-      <CardContent className="pt-4">
-        <div className="flex items-center gap-2 mb-1">{icon}<span className="text-sm font-medium">{label}</span></div>
-        <div className="text-3xl font-bold">{value}</div>
+    <Card>
+      <CardContent className="pt-5">
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className={`text-3xl font-bold mt-1 ${accent ? "text-primary" : ""}`}>{value}</div>
+        <div className="text-sm text-muted-foreground mt-1">{note}</div>
       </CardContent>
     </Card>
   );

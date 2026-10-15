@@ -6,15 +6,15 @@
 @layer base {
   :root {
     /* Brand Colors - Primary Blue */
-    --primary-blue: 217 91% 60%;
-    --deep-blue: 222 47% 15%;
-    --analytics-blue: 217 70% 50%;
+    --primary-blue: 172 84% 26%;
+    --deep-blue: 218 49% 12%;
+    --analytics-blue: 172 70% 32%;
     --success-green: 142 76% 36%;
 
     /* Neutrals */
     --deep-slate: 222 30% 20%;
     --charcoal: 220 13% 26%;
-    --medium-gray: 215 14% 40%;
+    --medium-gray: 217 21% 34%;
 
     /* Accents - Supporting */
     --purple: 280 85% 65%;
@@ -43,7 +43,7 @@
     --shadow-3d: 0 15px 35px -10px rgba(0, 0, 0, 0.2), 0 8px 20px -8px rgba(0, 0, 0, 0.15), 0 2px 8px -2px rgba(0, 0, 0, 0.1);
 
     /* Design System Tokens */
-    --background: 220 25% 96%;
+    --background: 220 22% 98%;
     --foreground: var(--deep-blue);
     
     --card: 0 0% 100%;
@@ -67,8 +67,8 @@
     --destructive: var(--error);
     --destructive-foreground: 0 0% 100%;
     
-    --border: 220 20% 90%;
-    --input: 220 20% 90%;
+    --border: 218 24% 88%;
+    --input: 218 24% 88%;
     --ring: var(--primary-blue);
     
     --chart-1: var(--primary-blue);
@@ -151,7 +151,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
 
@@ -277,7 +277,7 @@
 
   /* React Big Calendar Styles */
   .rbc-calendar {
-    font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   .rbc-header {
