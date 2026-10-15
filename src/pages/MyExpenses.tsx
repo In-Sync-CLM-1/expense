@@ -52,7 +52,7 @@ export default function MyExpenses() {
           </h1>
           <p className="text-muted-foreground">Submit and track your expense claims</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setRequestAdvanceOpen(true)} size="lg">
             <HandCoins className="mr-2 h-4 w-4" /> Request Advance
           </Button>

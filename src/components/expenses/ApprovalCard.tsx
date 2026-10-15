@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { User, Calendar, MapPin, ExternalLink, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { User, Calendar, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import { FileStrip, receiptFiles } from "@/components/expenses/SupportingFiles";
 import { getExpenseTypeLabel, type ExpenseClaim, type ExpenseItem } from "@/hooks/useExpenseClaims";
 
 function itemFlagReason(item: ExpenseItem): string | null {
@@ -28,8 +28,6 @@ interface Props {
 }
 
 export function ApprovalCard({ claim, onApprove, onReject }: Props) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <Card>
       <CardContent className="pt-5 space-y-3">
@@ -66,54 +64,45 @@ export function ApprovalCard({ claim, onApprove, onReject }: Props) {
           </div>
         </div>
 
-        {/* Expandable items */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs h-7"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? "Hide" : "View"} expense details
-        </Button>
-
-        {expanded && claim.items && (
-          <div className="space-y-1.5 pl-3 border-l-2 border-muted">
+        {/* Items and their receipts: always visible so the approver never has to hunt for proof */}
+        {claim.items && (
+          <div className="space-y-3 pl-3 border-l-2 border-muted">
             {claim.items.map((item) => {
               const flagReason = itemFlagReason(item);
               return (
-                <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                  <div>
-                    <Badge variant="outline" className="text-xs mr-2">
-                      {getExpenseTypeLabel(item.expense_type)}
-                    </Badge>
-                    <span className="text-muted-foreground">{item.description}</span>
-                    {item.receipt_url && (
-                      <a
-                        href={item.receipt_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-blue-500 inline-flex items-center gap-0.5"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                    {flagReason && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="ml-2 inline-flex items-center gap-1 text-destructive align-middle">
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">{flagReason}</TooltipContent>
-                      </Tooltip>
-                    )}
+                <div key={item.id} className="space-y-1.5 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Badge variant="outline" className="text-xs mr-2">
+                        {getExpenseTypeLabel(item.expense_type)}
+                      </Badge>
+                      <span className="text-muted-foreground">{item.description}</span>
+                      {flagReason && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="ml-2 inline-flex items-center gap-1 text-destructive align-middle">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">{flagReason}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <span className="font-medium whitespace-nowrap">
+                      ₹{Number(item.amount).toLocaleString("en-IN")}
+                    </span>
                   </div>
-                  <span className="font-medium whitespace-nowrap">
-                    ₹{Number(item.amount).toLocaleString("en-IN")}
-                  </span>
+                  <FileStrip files={receiptFiles(item)} />
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {(claim.proof_urls?.length ?? 0) > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-muted-foreground">Claim proofs</p>
+            <FileStrip files={claim.proof_urls.map((p) => ({ url: p.url, name: p.name }))} />
           </div>
         )}
 

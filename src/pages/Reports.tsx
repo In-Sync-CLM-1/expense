@@ -541,7 +541,7 @@ export default function Reports() {
       )}
 
       <UrlTabs param="reports_tab" defaultValue="overview">
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
           <TabsTrigger value="teams">By Team</TabsTrigger>
