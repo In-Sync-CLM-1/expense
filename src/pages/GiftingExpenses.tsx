@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,15 +42,16 @@ export default function GiftingExpenses() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <ClaimTypeTabs />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Gift className="h-7 w-7" /> Gifting Expenses
+            <Gift className="h-7 w-7" /> Field Expenses
           </h1>
           <p className="text-muted-foreground">One claim, many projects — no approval needed, straight to Accounts for payment</p>
         </div>
         <Button onClick={() => setNewOpen(true)} size="lg">
-          <Plus className="mr-2 h-4 w-4" /> New Gifting Expense
+          <Plus className="mr-2 h-4 w-4" /> New Field Expense
         </Button>
       </div>
 
@@ -72,7 +74,7 @@ export default function GiftingExpenses() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
               <Gift className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">No gifting expense claims found</p>
+              <p className="text-muted-foreground">No field expense claims found</p>
               <Button variant="outline" className="mt-4" onClick={() => setNewOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" /> Create your first claim
               </Button>
@@ -95,7 +97,7 @@ export default function GiftingExpenses() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" /> Gifting Expense — {selectedClaim?.period || format(new Date(selectedClaim?.created_at ?? Date.now()), "MMM d, yyyy")}
+              <Gift className="h-5 w-5" /> Field Expense — {selectedClaim?.period || format(new Date(selectedClaim?.created_at ?? Date.now()), "MMM d, yyyy")}
             </DialogTitle>
           </DialogHeader>
           {selectedClaim && (

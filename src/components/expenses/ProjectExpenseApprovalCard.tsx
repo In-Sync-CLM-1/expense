@@ -1,11 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Briefcase, MapPin, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { User, Briefcase, MapPin, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useProjectExpenseClaimDetail, type ProjectExpenseClaim } from "@/hooks/useProjectExpenses";
-import { useState } from "react";
 import { RmplExpenseFiles } from "@/components/expenses/RmplExpenseFiles";
+import { FileStrip, receiptFiles } from "@/components/expenses/SupportingFiles";
 
 interface Props {
   claim: ProjectExpenseClaim;
@@ -14,8 +14,7 @@ interface Props {
 }
 
 export function ProjectExpenseApprovalCard({ claim, onApprove, onReject }: Props) {
-  const [expanded, setExpanded] = useState(false);
-  const { data: detail } = useProjectExpenseClaimDetail(expanded ? claim.id : undefined);
+  const { data: detail } = useProjectExpenseClaimDetail(claim.id);
 
   return (
     <Card>
@@ -43,25 +42,17 @@ export function ProjectExpenseApprovalCard({ claim, onApprove, onReject }: Props
           </div>
         </div>
 
-        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setExpanded(!expanded)}>
-          {expanded ? "Hide" : "View"} expense details
-        </Button>
+        <RmplExpenseFiles claimId={claim.id} />
 
-        {expanded && <RmplExpenseFiles claimId={claim.id} />}
-
-        {expanded && detail?.items && (
-          <div className="space-y-1.5 pl-3 border-l-2 border-muted">
+        {detail?.items && (
+          <div className="space-y-3 pl-3 border-l-2 border-muted">
             {detail.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                <div>
+              <div key={item.id} className="space-y-1.5 text-sm">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{format(new Date(item.line_date), "MMM d")} · {item.description || item.mode_of_transport || "—"}</span>
-                  {item.receipt_url && (
-                    <a href={item.receipt_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-500 inline-flex items-center gap-0.5">
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
+                  <span className="font-medium whitespace-nowrap">₹{Number(item.grand_total).toLocaleString("en-IN")}</span>
                 </div>
-                <span className="font-medium whitespace-nowrap">₹{Number(item.grand_total).toLocaleString("en-IN")}</span>
+                <FileStrip files={receiptFiles(item)} />
               </div>
             ))}
             {detail.travel_logs && detail.travel_logs.length > 0 && (

@@ -25,6 +25,7 @@ import {
   useApproveProjectExpenseClaim, useRejectProjectExpenseClaim, useMarkProjectExpenseReimbursed,
   getProjectExpenseStatusColor, getProjectExpenseStatusLabel, type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
+import { TravelClaimFiles, ProjectClaimFiles } from "@/components/expenses/SupportingFiles";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
 import { ProjectExpenseApprovalCard } from "@/components/expenses/ProjectExpenseApprovalCard";
@@ -141,7 +142,7 @@ export default function Approvals() {
           )}
           {isRmpl && (permissions.isAdmin || permissions.isAccounts) && (
             <TabsTrigger value="gifting" className="flex gap-2 items-center">
-              <Gift className="h-3.5 w-3.5" /> Gifting
+              <Gift className="h-3.5 w-3.5" /> Field expenses
               {giftingAwaitingPayment.length > 0 && (
                 <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{giftingAwaitingPayment.length}</Badge>
               )}
@@ -392,7 +393,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
@@ -423,7 +424,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
@@ -449,6 +450,7 @@ export default function Approvals() {
               <strong>{rejectPE?.project_name}</strong> by {rejectPE?.traveller_name}<br />
               Amount: ₹{Number(rejectPE?.actual_expense_total ?? 0).toLocaleString("en-IN")}
             </p>
+            {rejectPE && <ProjectClaimFiles claimId={rejectPE.id} />}
             <div className="space-y-2">
               <Label>Reason for Rejection *</Label>
               <Textarea value={rejectPEReason} onChange={(e) => setRejectPEReason(e.target.value)} placeholder="Please provide a reason" rows={3} />
@@ -479,6 +481,7 @@ export default function Approvals() {
               <Input type="number" value={approvedAmount} onChange={(e) => setApprovedAmount(e.target.value)} />
               <p className="text-xs text-muted-foreground">Leave as-is to approve the full amount</p>
             </div>
+            {approveClaim && <TravelClaimFiles claim={approveClaim} />}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveClaim(null)}>Cancel</Button>
@@ -499,6 +502,7 @@ export default function Approvals() {
               <strong>{rejectClaim?.trip_title}</strong> by {rejectClaim?.profiles?.full_name}<br />
               Amount: ₹{Number(rejectClaim?.total_amount ?? 0).toLocaleString("en-IN")}
             </p>
+            {rejectClaim && <TravelClaimFiles claim={rejectClaim} />}
             <div className="space-y-2">
               <Label>Reason for Rejection *</Label>
               <Textarea

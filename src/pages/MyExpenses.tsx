@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ export default function MyExpenses() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <ClaimTypeTabs />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -50,7 +52,7 @@ export default function MyExpenses() {
           </h1>
           <p className="text-muted-foreground">Submit and track your expense claims</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setRequestAdvanceOpen(true)} size="lg">
             <HandCoins className="mr-2 h-4 w-4" /> Request Advance
           </Button>
