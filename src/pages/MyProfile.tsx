@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserCircle, Save, KeyRound } from "lucide-react";
+import { Loader2, Save, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { getRoleDisplayName, getRoleVariant } from "@/lib/rolePermissions";
+import { PageTitle } from "@/components/StatTile";
 
 export default function MyProfile() {
   const [profile, setProfile] = useState<{ full_name: string; email: string; phone: string; manager_name?: string; roles: string[] } | null>(null);
@@ -96,9 +97,7 @@ export default function MyProfile() {
   return (
     <div className="container mx-auto p-6 max-w-xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <UserCircle className="h-7 w-7" /> My Profile
-        </h1>
+        <PageTitle eyebrow="Account">My Profile</PageTitle>
         <p className="text-muted-foreground">View and update your account details</p>
       </div>
 

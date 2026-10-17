@@ -74,7 +74,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-card border-b border-border px-4 sm:px-8 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border shadow-[0_1px_0_hsl(var(--border)),0_8px_24px_-20px_hsl(222_46%_14%/0.4)] px-4 sm:px-8 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 sm:gap-8 min-w-0">
           <Brand name={currentOrg?.name} />
           <TopNav userRoles={userRoles} currentOrg={currentOrg} />
@@ -107,7 +107,7 @@ export function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 h-9 px-2">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                    <AvatarFallback className="text-xs bg-[hsl(var(--deep-blue))] text-white font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>

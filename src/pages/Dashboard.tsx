@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, isSameMonth } from "date-fns";
 import { Loader2, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/contexts/OrgContext";
 import { isRmplOrg } from "@/lib/rmplOrg";
@@ -16,6 +16,7 @@ import { usePendingAdvanceRequests } from "@/hooks/useAdvanceRequests";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { computeScore, type ScoreClaim } from "@/lib/gamification";
 import { ScoreCard } from "@/components/home/ScoreCard";
+import { StatTile, PageTitle } from "@/components/StatTile";
 
 type Kind = "travel" | "project" | "field";
 
@@ -49,7 +50,7 @@ function statusInfo(kind: Kind, status: string): { label: string; tone: "grey" |
 
 const TONE: Record<string, string> = {
   grey: "bg-muted text-muted-foreground",
-  blue: "bg-blue-100 text-blue-900",
+  blue: "bg-sky-100 text-sky-900",
   teal: "bg-primary/10 text-primary",
   amber: "bg-amber-100 text-amber-900",
 };
@@ -133,11 +134,11 @@ export default function Dashboard() {
   const owed = sum(beingPaid);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-8 py-8 space-y-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-8 py-8 space-y-8">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold">{firstName ? `Hello, ${firstName}` : "Hello"}</h1>
-          <p className="text-muted-foreground mt-1 text-lg">
+          <PageTitle eyebrow={format(new Date(), "EEEE, d MMMM")}>{firstName ? `Hello, ${firstName}` : "Hello"}</PageTitle>
+          <p className="text-muted-foreground mt-2 text-lg">
             {owed > 0 ? `${inr(owed)} is on its way to you.` : "Nothing is waiting to be paid to you."}
             {returned.length > 0 ? ` ${returned.length === 1 ? "One claim needs" : `${returned.length} claims need`} your attention.` : ""}
           </p>
@@ -150,7 +151,7 @@ export default function Dashboard() {
       ) : (
         <>
           {returned.slice(0, 2).map((r) => (
-            <div key={r.id} className="rounded-2xl border border-amber-300 bg-amber-50 p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div key={r.id} className="rounded-2xl border border-amber-300 border-l-4 border-l-amber-500 bg-amber-50 p-5 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <div className="font-bold text-amber-900">Returned: needs a fix</div>
                 <div className="text-amber-900/90 mt-1">
@@ -186,14 +187,14 @@ export default function Dashboard() {
           )}
 
           <div className="grid gap-5 sm:grid-cols-3">
-            <Stat label="Waiting for approval" value={inr(sum(waiting))} note={`${waiting.length} ${waiting.length === 1 ? "claim" : "claims"}`} />
-            <Stat label="Approved, being paid" value={inr(sum(beingPaid))} note={`${beingPaid.length} ${beingPaid.length === 1 ? "claim" : "claims"}`} accent />
-            <Stat label="Paid this month" value={inr(sum(paidThisMonth))} note={`${paidThisMonth.length} ${paidThisMonth.length === 1 ? "claim" : "claims"}`} />
+            <StatTile tone="amber" label="Waiting for approval" value={inr(sum(waiting))} note={`${waiting.length} ${waiting.length === 1 ? "claim" : "claims"}`} />
+            <StatTile tone="primary" label="Approved, being paid" value={inr(sum(beingPaid))} note={`${beingPaid.length} ${beingPaid.length === 1 ? "claim" : "claims"}`} />
+            <StatTile tone="green" label="Paid this month" value={inr(sum(paidThisMonth))} note={`${paidThisMonth.length} ${paidThisMonth.length === 1 ? "claim" : "claims"}`} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-3 overflow-hidden">
-              <div className="px-5 py-4 font-bold border-b">Recent claims</div>
+              <div className="px-5 py-4 font-display text-lg font-semibold border-b bg-muted/30">Recent claims</div>
               {rows.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   No claims yet. Start your first one and earn your first badge.
@@ -216,7 +217,7 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-medium">{inr(r.amount)}</span>
+                            <span className="font-display text-lg font-semibold tabular-nums">{inr(r.amount)}</span>
                             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE[st.tone]}`}>{st.label}</span>
                           </div>
                         </button>
@@ -233,17 +234,5 @@ export default function Dashboard() {
         </>
       )}
     </div>
-  );
-}
-
-function Stat({ label, value, note, accent }: { label: string; value: string; note: string; accent?: boolean }) {
-  return (
-    <Card>
-      <CardContent className="pt-5">
-        <div className="text-sm text-muted-foreground">{label}</div>
-        <div className={`text-3xl font-bold mt-1 ${accent ? "text-primary" : ""}`}>{value}</div>
-        <div className="text-sm text-muted-foreground mt-1">{note}</div>
-      </CardContent>
-    </Card>
   );
 }

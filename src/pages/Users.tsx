@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Search, Users as UsersIcon, Edit, UserCheck, UserX } from "lucide-react";
+import { Loader2, Plus, Search, Users as Edit, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { getRoleDisplayName, getRoleVariant } from "@/lib/rolePermissions";
 import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle } from "@/components/StatTile";
 
 interface Profile {
   id: string;
@@ -100,12 +101,10 @@ export default function Users() {
   });
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <UsersIcon className="h-7 w-7" /> Users
-          </h1>
+          <PageTitle eyebrow="Manage">Users</PageTitle>
           <p className="text-muted-foreground">
             Manage employees, roles, and reporting hierarchy for {currentOrg?.name}
           </p>

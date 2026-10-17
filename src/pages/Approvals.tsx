@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, ShieldCheck, IndianRupee, Gift } from "lucide-react";
+import { Loader2, CheckCircle, IndianRupee, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
@@ -34,6 +34,7 @@ import {
   getGiftingStatusColor, getGiftingStatusLabel,
 } from "@/hooks/useGiftingExpenses";
 import { UrlTabs } from "@/components/UrlTabs";
+import { PageTitle } from "@/components/StatTile";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
@@ -108,11 +109,9 @@ export default function Approvals() {
   const giftingHistory = allGiftingExpenses?.filter((c) => c.status === "reimbursed") ?? [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ShieldCheck className="h-7 w-7" /> Expense Approvals
-        </h1>
+        <PageTitle eyebrow="Review">Expense Approvals</PageTitle>
         <p className="text-muted-foreground">Review and approve team expense claims</p>
       </div>
 

@@ -2,146 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Bluspring CRM Design System - Brand Colors & Tokens */
+/* Expense design system: the fleet's navy / cyan ink (IT Helpdesk, CRM) with
+   Inter for text and Newsreader for display figures. The legacy brand
+   variable names below are kept so older screens recolor without edits. */
 @layer base {
   :root {
-    /* Brand Colors - Primary Blue */
-    --primary-blue: 172 84% 26%;
-    --deep-blue: 218 49% 12%;
-    --analytics-blue: 172 70% 32%;
-    --success-green: 142 76% 36%;
+    --primary-blue: 199 74% 42%;
+    --deep-blue: 222 46% 14%;
+    --analytics-blue: 199 74% 35%;
+    --success-green: 142 60% 34%;
+    --primary-teal: 199 74% 38%;
 
-    /* Neutrals */
     --deep-slate: 222 30% 20%;
     --charcoal: 220 13% 26%;
-    --medium-gray: 217 21% 34%;
+    --medium-gray: 222 12% 42%;
 
-    /* Accents - Supporting */
-    --purple: 280 85% 65%;
-    --lavender: 280 70% 75%;
+    --purple: 199 74% 42%;
+    --lavender: 199 74% 34%;
     --sky-blue: 195 85% 75%;
-    --light-blue: 195 80% 82%;
+    --light-blue: 195 80% 90%;
 
-    /* Semantic Colors */
-    --success: 142 76% 36%;
-    --success-bg: 142 56% 92%;
-    --warning: 50 94% 68%;
-    --warning-bg: 48 100% 95%;
-    --error: 1 98% 69%;
-    --error-bg: 0 100% 95%;
-    --info: 217 85% 75%;
-    --info-bg: 217 76% 95%;
+    --success: 142 60% 34%;
+    --success-bg: 142 45% 93%;
+    --warning: 38 88% 50%;
+    --warning-bg: 40 100% 94%;
+    --error: 0 72% 51%;
+    --error-bg: 0 90% 96%;
+    --info: 199 74% 42%;
+    --info-bg: 199 70% 94%;
 
-    /* Visual Effects */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(222 47% 35%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(222 47% 15%) 0%, hsl(222 50% 25%) 100%);
-    --gradient-purple: linear-gradient(135deg, hsl(280 85% 65%) 0%, hsl(280 70% 75%) 100%);
-    --shadow-vibrant: 0 12px 40px -8px hsl(217 91% 60% / 0.35), 0 4px 12px -4px hsl(217 91% 60% / 0.2);
-    --shadow-glow: 0 8px 32px hsl(217 91% 60% / 0.25), 0 0 60px hsl(217 91% 60% / 0.15);
-    --shadow-accent: 0 12px 40px -8px hsl(222 47% 15% / 0.4), 0 4px 16px -4px hsl(222 47% 15% / 0.3);
-    --shadow-deep: 0 20px 60px -12px hsl(222 47% 15% / 0.5), 0 8px 24px -8px hsl(222 47% 15% / 0.3);
-    --shadow-3d: 0 15px 35px -10px rgba(0, 0, 0, 0.2), 0 8px 20px -8px rgba(0, 0, 0, 0.15), 0 2px 8px -2px rgba(0, 0, 0, 0.1);
+    --gradient-primary: linear-gradient(135deg, hsl(199 74% 42%) 0%, hsl(222 46% 22%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(222 46% 14%) 0%, hsl(222 40% 24%) 100%);
+    --gradient-purple: linear-gradient(135deg, hsl(199 74% 42%) 0%, hsl(199 74% 60%) 100%);
+    --shadow-vibrant: 0 10px 30px -10px hsl(199 74% 42% / 0.35);
+    --shadow-glow: 0 8px 28px hsl(199 74% 42% / 0.22);
+    --shadow-accent: 0 10px 30px -10px hsl(222 46% 14% / 0.4);
+    --shadow-deep: 0 16px 40px -14px hsl(222 46% 14% / 0.35);
+    --shadow-3d: 0 10px 28px -12px hsl(222 46% 14% / 0.25), 0 2px 6px -2px hsl(222 46% 14% / 0.1);
 
-    /* Design System Tokens */
-    --background: 220 22% 98%;
-    --foreground: var(--deep-blue);
-    
+    --background: 210 25% 97%;
+    --foreground: 222 35% 14%;
     --card: 0 0% 100%;
-    --card-foreground: var(--deep-blue);
-    
+    --card-foreground: 222 35% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: var(--deep-blue);
-    
-    --primary: var(--primary-blue);
+    --popover-foreground: 222 35% 14%;
+    --primary: 199 74% 42%;
     --primary-foreground: 0 0% 100%;
-    
-    --secondary: var(--purple);
-    --secondary-foreground: 0 0% 100%;
-    
-    --muted: 220 20% 96%;
-    --muted-foreground: var(--medium-gray);
-    
-    --accent: var(--deep-blue);
-    --accent-foreground: 0 0% 100%;
-    
-    --destructive: var(--error);
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 30% 18%;
+    --muted: 210 20% 95%;
+    --muted-foreground: 222 12% 42%;
+    --accent: 199 50% 93%;
+    --accent-foreground: 222 35% 14%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    
-    --border: 218 24% 88%;
-    --input: 218 24% 88%;
-    --ring: var(--primary-blue);
-    
-    --chart-1: var(--primary-blue);
-    --chart-2: var(--analytics-blue);
-    --chart-3: var(--purple);
-    --chart-4: 142 76% 36%;
-    --chart-5: var(--success-green);
-    
+    --border: 210 18% 89%;
+    --input: 210 18% 86%;
+    --ring: 199 74% 42%;
+
+    --chart-1: 199 74% 45%;
+    --chart-2: 142 50% 38%;
+    --chart-3: 38 88% 55%;
+    --chart-4: 0 72% 58%;
+    --chart-5: 262 55% 55%;
+
     --radius: 0.75rem;
 
-    /* Sidebar Theme */
-    --sidebar-background: 222 35% 24%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 32%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 28% 35%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 222 46% 14%;
+    --sidebar-foreground: 210 22% 85%;
+    --sidebar-primary: 199 78% 55%;
+    --sidebar-primary-foreground: 222 46% 14%;
+    --sidebar-accent: 222 40% 21%;
+    --sidebar-accent-foreground: 199 82% 70%;
+    --sidebar-border: 222 36% 22%;
+    --sidebar-ring: 199 78% 55%;
   }
 
   .dark {
-    /* Dark mode tokens */
-    --background: 222 30% 10%;
-    --foreground: 0 0% 98%;
-    
-    --card: 222 25% 14%;
-    --card-foreground: 0 0% 98%;
-    
-    --popover: 222 25% 14%;
-    --popover-foreground: 0 0% 98%;
-    
-    --primary: 217 91% 65%;
-    --primary-foreground: 0 0% 100%;
-    
-    --secondary: 280 85% 70%;
-    --secondary-foreground: 0 0% 100%;
-    
-    --muted: 222 20% 18%;
-    --muted-foreground: 215 14% 65%;
-    
-    --accent: 217 50% 25%;
-    --accent-foreground: 0 0% 98%;
-    
-    --destructive: var(--error);
-    --destructive-foreground: 0 0% 100%;
-    
-    --border: 222 20% 22%;
-    --input: 222 20% 22%;
-    --ring: 217 91% 65%;
-    
-    --chart-1: 217 91% 65%;
-    --chart-2: 217 70% 55%;
-    --chart-3: 280 85% 70%;
-    --chart-4: 142 76% 45%;
-    --chart-5: 142 76% 40%;
-    
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(222 50% 40%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(222 47% 20%) 0%, hsl(222 50% 30%) 100%);
-    --gradient-purple: linear-gradient(135deg, hsl(280 85% 70%) 0%, hsl(280 70% 78%) 100%);
-    --shadow-vibrant: 0 8px 30px hsl(217 91% 65% / 0.35);
-    --shadow-glow: 0 0 40px hsl(217 91% 65% / 0.25);
-    --shadow-accent: 0 8px 30px hsl(222 47% 20% / 0.4);
+    --primary-blue: 199 78% 58%;
+    --primary-teal: 199 78% 62%;
+    --background: 222 32% 8%;
+    --foreground: 210 20% 96%;
+    --card: 222 28% 11%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 28% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 199 78% 58%;
+    --primary-foreground: 222 32% 8%;
+    --secondary: 222 22% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 222 20% 16%;
+    --muted-foreground: 210 12% 65%;
+    --accent: 199 40% 20%;
+    --accent-foreground: 210 20% 96%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 20% 96%;
+    --border: 222 20% 18%;
+    --input: 222 20% 20%;
+    --ring: 199 78% 58%;
 
-    /* Dark Sidebar */
-    --sidebar-background: 222 35% 12%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 217 91% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 22%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 28% 25%;
-    --sidebar-ring: 217 91% 65%;
+    --chart-1: 199 78% 62%;
+    --chart-2: 142 45% 50%;
+    --chart-3: 38 82% 60%;
+    --chart-4: 0 65% 62%;
+    --chart-5: 262 58% 65%;
+
+    --sidebar-background: 222 34% 9%;
+    --sidebar-foreground: 210 16% 80%;
+    --sidebar-primary: 199 78% 58%;
+    --sidebar-primary-foreground: 222 34% 9%;
+    --sidebar-accent: 222 26% 16%;
+    --sidebar-accent-foreground: 199 82% 74%;
+    --sidebar-border: 222 20% 16%;
+    --sidebar-ring: 199 78% 58%;
   }
 }
 
@@ -151,7 +124,11 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2 {
+    text-wrap: balance;
   }
 }
 

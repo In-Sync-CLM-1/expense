@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useGiftingExpenses";
 import { GiftingExpenseClaimDialog } from "@/components/expenses/GiftingExpenseClaimDialog";
 import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle } from "@/components/StatTile";
 
 export default function GiftingExpenses() {
   const { currentOrg } = useOrg();
@@ -41,13 +42,11 @@ export default function GiftingExpenses() {
   const filtered = claims?.filter((c) => statusFilter === "all" || c.status === statusFilter) ?? [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <ClaimTypeTabs />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Gift className="h-7 w-7" /> Field Expenses
-          </h1>
+          <PageTitle eyebrow="Claims">Field Expenses</PageTitle>
           <p className="text-muted-foreground">One claim, many projects — no approval needed, straight to Accounts for payment</p>
         </div>
         <Button onClick={() => setNewOpen(true)} size="lg">

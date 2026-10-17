@@ -9,8 +9,8 @@ export function ScoreCard({ score }: { score: Score }) {
       <CardContent className="pt-6 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-sm text-muted-foreground">Your filing level</div>
-            <div className="text-2xl font-bold flex items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Your filing level</div>
+            <div className="font-display text-3xl font-semibold mt-1 flex items-center gap-2">
               <Award className="h-6 w-6 text-primary" aria-hidden="true" /> {score.level.name}
             </div>
             <div className="text-sm text-muted-foreground mt-1">{score.points} points</div>
@@ -21,7 +21,7 @@ export function ScoreCard({ score }: { score: Score }) {
           >
             <Flame className="h-5 w-5 text-primary" aria-hidden="true" />
             <div>
-              <div className="text-lg font-bold leading-none">{score.cleanRun}</div>
+              <div className="font-display text-2xl font-semibold leading-none">{score.cleanRun}</div>
               <div className="text-xs text-muted-foreground">clean run</div>
             </div>
           </div>
@@ -36,7 +36,7 @@ export function ScoreCard({ score }: { score: Score }) {
             aria-valuemax={100}
             aria-label="Progress to next level"
           >
-            <div className="h-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-primary to-[hsl(199_78%_62%)] transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
           <div className="text-sm text-muted-foreground mt-2">
             {score.nextLevel
