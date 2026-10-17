@@ -581,32 +581,54 @@ export default function Login() {
   }, [authLoading, user, isPlatformAdmin, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background p-4">
-      <Card className="w-full max-w-md shadow-deep">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="p-3 bg-primary rounded-2xl">
-              <Receipt className="h-8 w-8 text-primary-foreground" />
+    <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr] bg-background">
+      <aside className="hidden lg:flex flex-col justify-between p-12 text-white relative overflow-hidden bg-[hsl(var(--deep-blue))]">
+        <div
+          className="absolute inset-0 opacity-60"
+          style={{ background: "radial-gradient(60% 50% at 20% 0%, hsl(199 78% 45% / 0.35), transparent 70%), radial-gradient(50% 40% at 100% 100%, hsl(142 50% 38% / 0.25), transparent 70%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-white/10 ring-1 ring-white/15"><Receipt className="h-5 w-5 text-[hsl(199_78%_66%)]" /></div>
+          <span className="font-display text-xl font-semibold tracking-tight">Expense Claims</span>
+        </div>
+        <div className="relative max-w-md">
+          <h2 className="font-display text-5xl font-semibold leading-[1.1] tracking-tight">
+            File it once.<br />Get paid sooner.
+          </h2>
+          <p className="mt-5 text-lg text-white/70 leading-relaxed">
+            Snap the receipt, let the app read it, and follow every claim from approval to payment in one place.
+          </p>
+        </div>
+        <div className="relative text-sm text-white/50">Part of the In-Sync suite</div>
+      </aside>
+      <div className="flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background p-4">
+        <Card className="w-full max-w-md shadow-deep">
+          <CardHeader className="text-center pb-2">
+            <div className="flex justify-center mb-3 lg:hidden">
+              <div className="p-3 bg-[hsl(var(--deep-blue))] rounded-2xl">
+                <Receipt className="h-8 w-8 text-[hsl(199_78%_66%)]" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Expense Claims</CardTitle>
-          <CardDescription>Manage your expense claims</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue={defaultTab}>
-            <TabsList className="w-full mb-5">
-              <TabsTrigger value="signin" className="flex-1">Sign In</TabsTrigger>
-              <TabsTrigger value="signup" className="flex-1">Sign Up</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <SignIn />
-            </TabsContent>
-            <TabsContent value="signup">
-              <SignUp />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            <CardTitle className="text-3xl font-semibold">Welcome back</CardTitle>
+            <CardDescription>Sign in to manage your expense claims</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue={defaultTab}>
+              <TabsList className="w-full mb-5">
+                <TabsTrigger value="signin" className="flex-1">Sign In</TabsTrigger>
+                <TabsTrigger value="signup" className="flex-1">Sign Up</TabsTrigger>
+              </TabsList>
+              <TabsContent value="signin">
+                <SignIn />
+              </TabsContent>
+              <TabsContent value="signup">
+                <SignUp />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

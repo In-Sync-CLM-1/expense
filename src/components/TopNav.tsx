@@ -12,7 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const link = "px-1 py-4 text-sm whitespace-nowrap border-b-2 transition-colors";
-const on = "border-primary text-primary font-bold";
+const on = "border-primary text-foreground font-semibold";
 const off = "border-transparent text-muted-foreground hover:text-foreground";
 
 const CLAIM_PATHS = ["/my-expenses", "/project-expenses", "/field-expenses"];
@@ -70,8 +70,8 @@ export function TopNav({ userRoles, currentOrg }: { userRoles: string[]; current
 export function Brand({ name }: { name?: string }) {
   return (
     <div className="flex items-center gap-2 shrink-0">
-      <div className="p-1.5 bg-primary rounded-lg"><Receipt className="h-4 w-4 text-primary-foreground" aria-hidden="true" /></div>
-      <span className="font-bold hidden md:inline max-w-[200px] truncate">{name ?? "Expense"}</span>
+      <div className="p-2 rounded-xl bg-[hsl(var(--deep-blue))] shadow-sm"><Receipt className="h-4 w-4 text-[hsl(199_78%_62%)]" aria-hidden="true" /></div>
+      <span className="font-display text-lg font-semibold tracking-tight hidden md:inline max-w-[220px] truncate">{name ?? "Expense"}</span>
     </div>
   );
 }
