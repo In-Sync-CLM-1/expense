@@ -134,7 +134,7 @@ export default function Dashboard() {
   const owed = sum(beingPaid);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-8 py-8 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 sm:px-8 py-8 space-y-8">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <PageTitle eyebrow={format(new Date(), "EEEE, d MMMM")}>{firstName ? `Hello, ${firstName}` : "Hello"}</PageTitle>
