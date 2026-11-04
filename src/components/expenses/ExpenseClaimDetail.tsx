@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, MapPin, Calendar, User, Receipt, FileText, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
+import { ExternalLink, MapPin, Calendar, User, Receipt, FileText, Image as ImageIcon, Upload, X, Loader2, FolderKanban } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -114,6 +114,13 @@ export function ExpenseClaimDetail({ claim, open, onOpenChange, isOwner }: Expen
               <div className="flex items-center gap-2 text-muted-foreground">
                 <User className="h-4 w-4" />
                 {claim.profiles.full_name}
+              </div>
+            )}
+
+            {(claim.project_number || claim.project_name) && (
+              <div className="flex items-center gap-2 text-muted-foreground col-span-2">
+                <FolderKanban className="h-4 w-4 shrink-0" />
+                {[claim.project_number, claim.project_name].filter(Boolean).join(" · ")}
               </div>
             )}
           </div>

@@ -34,6 +34,8 @@ export interface ProofFile {
 
 export interface ExpenseClaim {
   id: string;
+  project_number?: string | null;
+  project_name?: string | null;
   user_id: string;
   trip_title: string;
   trip_start_date: string;
