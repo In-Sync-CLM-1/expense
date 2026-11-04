@@ -7,6 +7,9 @@ import { toast } from "sonner";
 export interface ExpenseItem {
   id?: string;
   claim_id?: string;
+  rmpl_project_id?: string | null;
+  project_number?: string | null;
+  project_name?: string | null;
   expense_type: string;
   description: string;
   amount: number;
@@ -34,6 +37,8 @@ export interface ProofFile {
 
 export interface ExpenseClaim {
   id: string;
+  project_number?: string | null;
+  project_name?: string | null;
   user_id: string;
   trip_title: string;
   trip_start_date: string;

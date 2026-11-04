@@ -77,6 +77,9 @@ export function ApprovalCard({ claim, onApprove, onReject }: Props) {
                         {getExpenseTypeLabel(item.expense_type)}
                       </Badge>
                       <span className="text-muted-foreground">{item.description}</span>
+                      {item.project_number && (
+                        <span className="ml-2 text-xs text-muted-foreground">{item.project_number}</span>
+                      )}
                       {flagReason && (
                         <Tooltip>
                           <TooltipTrigger asChild>

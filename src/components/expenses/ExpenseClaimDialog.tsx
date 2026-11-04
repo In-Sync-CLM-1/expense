@@ -46,7 +46,7 @@ import {
 } from "@/lib/expenseExcelImport";
 import { isRmplOrg } from "@/lib/rmplOrg";
 import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
-import type { RmplProjectOption } from "@/hooks/useProjectExpenses";
+import { GENERAL_PROJECT_OPTION, lookupRmplProjects, type RmplProjectOption } from "@/hooks/useProjectExpenses";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -78,6 +78,7 @@ interface DraftItem {
   analyzing?: boolean;
   gst_number?: string;
   gst_amount?: string;
+  project?: RmplProjectOption | null;
   // Silent fraud-review signals — never rendered in this dialog. Captured
   // from the AI's reading of the receipt so the submitted amount can be
   // compared against it for the approver/accounts, without telling the
@@ -110,7 +111,6 @@ export function ExpenseClaimDialog({
   const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const [project, setProject] = useState<RmplProjectOption | null>(null);
   const isRmpl = isRmplOrg(orgId);
 
   const createClaim = useCreateClaim();
@@ -120,7 +120,6 @@ export function ExpenseClaimDialog({
     setTripData({ trip_title: "", destination: "", purpose: "" });
     setItems([{ ...emptyItem }]);
     setProofFiles([]);
-    setProject(null);
     localStorage.removeItem(draftKey);
   };
 
@@ -173,11 +172,17 @@ export function ExpenseClaimDialog({
     return () => clearTimeout(timer);
   }, [tripData, items, draftKey]);
 
-  const addItem = () => setItems([...items, { ...emptyItem }]);
+  // A new line starts on the previous line's project, since most claims stay on one.
+  const addItem = () =>
+    setItems([...items, { ...emptyItem, project: items[items.length - 1]?.project ?? null }]);
 
   const removeItem = (index: number) => {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const updateItemProject = (index: number, project: RmplProjectOption) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, project } : item)));
   };
 
   const updateItem = (index: number, field: keyof DraftItem, value: string) => {
@@ -283,6 +288,23 @@ export function ExpenseClaimDialog({
     try {
       const { items: parsed, errors } = await parseExpenseImportFile(file);
 
+      const wantedNumbers = isRmpl
+        ? [...new Set(parsed.map((row) => row.project_number).filter((n) => n && n !== GENERAL_PROJECT_OPTION.project_number))]
+        : [];
+      let foundProjects: RmplProjectOption[] = [];
+      try {
+        foundProjects = await lookupRmplProjects(wantedNumbers);
+      } catch (err) {
+        console.error("Project lookup failed:", err);
+      }
+      const projectByNumber = new Map(foundProjects.map((p) => [(p.project_number ?? "").toLowerCase(), p]));
+      const unknownNumbers = wantedNumbers.filter((n) => !projectByNumber.has(n.toLowerCase()));
+      const projectFor = (number: string) => {
+        if (!isRmpl) return null;
+        if (number === GENERAL_PROJECT_OPTION.project_number) return GENERAL_PROJECT_OPTION;
+        return projectByNumber.get(number.toLowerCase()) ?? null;
+      };
+
       if (parsed.length > 0) {
         const imported: DraftItem[] = parsed.map((row) => ({
           expense_type: row.expense_type,
@@ -291,6 +313,7 @@ export function ExpenseClaimDialog({
           expense_date: row.expense_date,
           gst_amount: row.gst_amount || undefined,
           gst_number: row.gst_number || undefined,
+          project: projectFor(row.project_number),
         }));
 
         setItems((prev) => {
@@ -315,6 +338,9 @@ export function ExpenseClaimDialog({
         toast.success(`Imported ${parsed.length} expense(s) from the file — add receipts below before submitting.`);
       } else {
         toast.error("No expense rows found in that file.");
+      }
+      if (unknownNumbers.length > 0) {
+        toast.error(`These project numbers were not found, so please pick the project on those lines: ${unknownNumbers.slice(0, 5).join(", ")}`, { duration: 8000 });
       }
     } catch (err) {
       console.error("Excel import failed:", err);
@@ -362,7 +388,7 @@ export function ExpenseClaimDialog({
     !!tripData.trip_title &&
     items.length > 0 &&
     items.every(
-      (item) => item.expense_type && item.amount && item.expense_date,
+      (item) => item.expense_type && item.amount && item.expense_date && (!isRmpl || !!item.project),
     );
 
   const handleSubmit = async (asDraft: boolean) => {
@@ -389,7 +415,11 @@ export function ExpenseClaimDialog({
         const flagAmountMismatch =
           aiAmount != null && submittedAmount > aiAmount + amountMismatchTolerance;
 
+        const lineProject = isRmpl ? item.project ?? null : null;
         claimItems.push({
+          rmpl_project_id: lineProject && lineProject.id !== GENERAL_PROJECT_OPTION.id ? lineProject.id : null,
+          project_number: lineProject?.project_number ?? null,
+          project_name: lineProject?.project_name ?? null,
           expense_type: item.expense_type,
           description: item.description,
           amount: submittedAmount,
@@ -405,6 +435,14 @@ export function ExpenseClaimDialog({
         });
       }
 
+      // The claim keeps a project only when every line shares the same real one.
+      const lineProjectIds = new Set(items.map((item) => item.project?.id ?? null));
+      const firstProject = items[0]?.project ?? null;
+      const claimProject =
+        isRmpl && lineProjectIds.size === 1 && firstProject && firstProject.id !== GENERAL_PROJECT_OPTION.id
+          ? firstProject
+          : null;
+
       const itemDates = items
         .map((item) => item.expense_date)
         .filter(Boolean)
@@ -417,9 +455,9 @@ export function ExpenseClaimDialog({
         trip_end_date: itemDates[itemDates.length - 1],
         destination: tripData.destination || undefined,
         purpose: tripData.purpose || undefined,
-        rmpl_project_id: project?.id ?? null,
-        project_number: project?.project_number ?? null,
-        project_name: project?.project_name ?? null,
+        rmpl_project_id: claimProject?.id ?? null,
+        project_number: claimProject?.project_number ?? null,
+        project_name: claimProject?.project_name ?? null,
         items: claimItems,
       });
 
@@ -539,20 +577,6 @@ export function ExpenseClaimDialog({
             </div>
           </div>
 
-          {isRmpl && (
-            <div className="space-y-2">
-              <Label>Project (optional)</Label>
-              <ProjectExpenseProjectCombobox
-                value={project?.id ?? null}
-                valueName={project?.project_name}
-                onChange={setProject}
-              />
-              <p className="text-xs text-muted-foreground">
-                Tag this claim to a project so it counts in that project's expense total. Left blank, it's tracked under the general (999) bucket.
-              </p>
-            </div>
-          )}
-
           <div className="space-y-3">
             {items.map((item, index) => (
               <Card key={index} className="relative">
@@ -566,6 +590,17 @@ export function ExpenseClaimDialog({
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
+                  )}
+                  {isRmpl && (
+                    <div className="space-y-1 pr-8">
+                      <Label className="text-xs">Project *</Label>
+                      <ProjectExpenseProjectCombobox
+                        value={item.project?.id ?? null}
+                        valueName={item.project ? [item.project.project_number, item.project.project_name].filter(Boolean).join(" · ") : null}
+                        onChange={(project) => updateItemProject(index, project)}
+                        showGeneral
+                      />
+                    </div>
                   )}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
@@ -709,7 +744,7 @@ export function ExpenseClaimDialog({
           </div>
           <button
             type="button"
-            onClick={downloadExpenseImportTemplate}
+            onClick={() => downloadExpenseImportTemplate(isRmpl)}
             className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 flex items-center gap-1"
           >
             <Download className="h-3 w-3" /> Download Excel template

@@ -13,8 +13,9 @@ const TEMPLATE_HEADERS = [
   "Vendor GSTIN (optional)",
 ];
 
-export async function downloadExpenseImportTemplate() {
+export async function downloadExpenseImportTemplate(withProject = false) {
   const XLSX = await loadXLSX();
+  const headers = withProject ? [...TEMPLATE_HEADERS, "Project No."] : TEMPLATE_HEADERS;
   const example = [
     "2026-07-15",
     "Cab / Taxi",
@@ -22,9 +23,10 @@ export async function downloadExpenseImportTemplate() {
     "450",
     "",
     "",
+    ...(withProject ? ["RMPL-26-458"] : []),
   ];
 
-  const sheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, example]);
+  const sheet = XLSX.utils.aoa_to_sheet([headers, example]);
   sheet["!cols"] = [
     { wch: 12 },
     { wch: 22 },
@@ -32,6 +34,7 @@ export async function downloadExpenseImportTemplate() {
     { wch: 14 },
     { wch: 18 },
     { wch: 18 },
+    ...(withProject ? [{ wch: 16 }] : []),
   ];
 
   const typesSheet = XLSX.utils.aoa_to_sheet([
@@ -55,6 +58,7 @@ export interface ParsedExpenseRow {
   expense_date: string;
   gst_amount: string;
   gst_number: string;
+  project_number: string;
 }
 
 export interface ExpenseImportResult {
@@ -123,6 +127,7 @@ export async function parseExpenseImportFile(file: File): Promise<ExpenseImportR
       expense_date: expenseDate,
       gst_amount: gstAmount !== null ? String(gstAmount) : "",
       gst_number: norm(gstNumberRaw),
+      project_number: norm(getCell(row, "Project No.", "Project Number", "Project")),
     });
   });
 
