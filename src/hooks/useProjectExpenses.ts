@@ -290,6 +290,27 @@ export interface ProjectSummaryRow {
 
 const GENERAL_BUCKET = { number: "999", name: "General / Non-Project" };
 
+/** Picker choice for an expense that belongs to no project; stored with no project id. */
+export const GENERAL_PROJECT_OPTION: RmplProjectOption = {
+  id: "general",
+  project_name: GENERAL_BUCKET.name,
+  project_number: GENERAL_BUCKET.number,
+  status: null,
+  project_owner_external_id: null,
+  project_owner_name: null,
+  project_owner_email: null,
+  project_owner_user_id: null,
+};
+
+interface RegularClaimRow {
+  project_number: string | null;
+  project_name: string | null;
+  total_amount: number;
+  approved_amount: number | null;
+  status: string;
+  items: { amount: number; project_number: string | null; project_name: string | null }[] | null;
+}
+
 export function useProjectExpenseSummary(orgId?: string, enabled = true) {
   return useQuery({
     queryKey: ["project-expense-summary", orgId],
@@ -302,7 +323,7 @@ export function useProjectExpenseSummary(orgId?: string, enabled = true) {
           .neq("status", "draft"),
         supabase
           .from("travel_expense_claims" as never)
-          .select("project_number, project_name, total_amount, approved_amount, status")
+          .select("project_number, project_name, total_amount, approved_amount, status, items:travel_expense_items(amount, project_number, project_name)")
           .eq("org_id", orgId as string)
           .neq("status", "draft"),
       ]);
@@ -330,11 +351,26 @@ export function useProjectExpenseSummary(orgId?: string, enabled = true) {
         row.projectExpenseTotal += Number(c.actual_expense_total);
         row.projectExpenseCount += 1;
       }
-      for (const c of (regClaims ?? []) as { project_number: string | null; project_name: string | null; total_amount: number; approved_amount: number | null; status: string }[]) {
-        const row = rowFor(c.project_number, c.project_name);
+      for (const c of (regClaims ?? []) as RegularClaimRow[]) {
         const amount = (c.status === "approved" || c.status === "reimbursed") ? Number(c.approved_amount ?? c.total_amount) : Number(c.total_amount);
-        row.regularClaimTotal += amount;
-        row.regularClaimCount += 1;
+        const lines = c.items ?? [];
+        if (!lines.some((l) => l.project_number)) {
+          // Older claims have one project for the whole claim.
+          const row = rowFor(c.project_number, c.project_name);
+          row.regularClaimTotal += amount;
+          row.regularClaimCount += 1;
+          continue;
+        }
+        // Approval sets one amount for the claim, so it is shared across the lines
+        // in proportion, which keeps the project totals equal to the claim total.
+        const lineTotal = lines.reduce((sum, l) => sum + Number(l.amount), 0);
+        const touched = new Set<ProjectSummaryRow>();
+        for (const l of lines) {
+          const row = rowFor(l.project_number ?? c.project_number, l.project_name ?? c.project_name);
+          row.regularClaimTotal += lineTotal > 0 ? (Number(l.amount) / lineTotal) * amount : 0;
+          touched.add(row);
+        }
+        for (const row of touched) row.regularClaimCount += 1;
       }
       for (const row of map.values()) row.combinedTotal = row.projectExpenseTotal + row.regularClaimTotal;
 

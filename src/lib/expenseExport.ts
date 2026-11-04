@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import type { ExpenseClaim } from "@/hooks/useExpenseClaims";
 import type { ProjectExpenseClaim, ProjectSummaryRow } from "@/hooks/useProjectExpenses";
 
@@ -49,13 +50,40 @@ function fmtAmount(n: number | null | undefined): string {
 
 // ─── 1. Export a list of expense claims (summary level) ───────────────────────
 
-export function exportClaimsToCSV(claims: ExpenseClaim[]) {
+// The claims list does not load its lines, so the line projects are fetched here.
+async function fetchLineProjectNumbers(claimIds: string[]): Promise<Map<string, string[]>> {
+  const byClaim = new Map<string, string[]>();
+  for (let i = 0; i < claimIds.length; i += 200) {
+    const { data, error } = await supabase
+      .from("travel_expense_items" as never)
+      .select("claim_id, project_number")
+      .in("claim_id", claimIds.slice(i, i + 200))
+      .not("project_number", "is", null);
+    if (error) throw error;
+    for (const row of (data ?? []) as { claim_id: string; project_number: string }[]) {
+      const numbers = byClaim.get(row.claim_id) ?? [];
+      if (!numbers.includes(row.project_number)) numbers.push(row.project_number);
+      byClaim.set(row.claim_id, numbers);
+    }
+  }
+  return byClaim;
+}
+
+export async function exportClaimsToCSV(claims: ExpenseClaim[]) {
+  let lineProjects = new Map<string, string[]>();
+  try {
+    lineProjects = await fetchLineProjectNumbers(claims.map((c) => c.id));
+  } catch (err) {
+    console.error("Could not load line projects for the export:", err);
+  }
+
   const headers = [
     "Claim ID",
     "Employee",
     "Email",
     "Claim Title",
     "Location / Project",
+    "Project No.",
     "Start Date",
     "End Date",
     "Purpose",
@@ -77,6 +105,7 @@ export function exportClaimsToCSV(claims: ExpenseClaim[]) {
     c.profiles?.email ?? "",
     c.trip_title,
     c.destination ?? "",
+    lineProjects.get(c.id)?.join("; ") || c.project_number || "",
     fmtDate(c.trip_start_date),
     fmtDate(c.trip_end_date),
     c.purpose ?? "",
@@ -165,6 +194,8 @@ export function exportClaimDetailToCSV(claim: ExpenseClaim) {
     "Item Status",
     "Remarks",
     "Receipt",
+    "Project No.",
+    "Project Name",
   ];
 
   const itemRows = (claim.items ?? []).map((item) => [
@@ -176,6 +207,8 @@ export function exportClaimDetailToCSV(claim: ExpenseClaim) {
     item.item_status ?? "",
     item.remarks ?? "",
     item.receipt_url ? item.receipt_name ?? item.receipt_url : "",
+    item.project_number ?? claim.project_number ?? "",
+    item.project_name ?? claim.project_name ?? "",
   ]);
 
   const allRows: unknown[][] = [
