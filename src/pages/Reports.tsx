@@ -15,10 +15,13 @@ import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { isRmplOrg } from "@/lib/rmplOrg";
-import { useMarkReimbursed, useCurrentUser, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { useMarkReimbursed, useCurrentUser, useExpenseClaimDetail, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
+import { ProjectClaimLinesDialog } from "@/components/expenses/ProjectClaimLinesDialog";
 import {
   useAllProjectExpenseClaims, useMarkProjectExpenseReimbursed, useProjectExpenseSummary,
   getProjectExpenseStatusColor, getProjectExpenseStatusLabel,
+  type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
 import {
   exportClaimsToCSV,
@@ -201,6 +204,9 @@ export default function Reports() {
   const { currentOrg } = useOrg();
   const { data: currentUser } = useCurrentUser();
   const isRmpl = isRmplOrg(currentOrg?.id);
+  const [viewClaimId, setViewClaimId] = useState<string | null>(null);
+  const { data: viewedClaim } = useExpenseClaimDetail(viewClaimId ?? undefined);
+  const [viewProjectClaim, setViewProjectClaim] = useState<ProjectExpenseClaim | null>(null);
   const { data: projectExpenseClaims, isLoading: projectExpensesLoading } = useAllProjectExpenseClaims(currentOrg?.id, isRmpl && permissions.canViewReports);
   const { data: projectSummary, isLoading: projectSummaryLoading } = useProjectExpenseSummary(currentOrg?.id, isRmpl && permissions.canViewReports);
   const markProjectExpenseReimbursed = useMarkProjectExpenseReimbursed();
@@ -807,7 +813,11 @@ export default function Reports() {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell>{claim.trip_title}</TableCell>
+                        <TableCell>
+                          <button type="button" className="text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>
+                            {claim.trip_title}
+                          </button>
+                        </TableCell>
                         <TableCell>{claim.destination ?? "—"}</TableCell>
                         <TableCell>
                           {claim.approved_at
@@ -864,7 +874,9 @@ export default function Reports() {
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{claim.trip_title}</span>
+                          <button type="button" className="font-medium text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>
+                            {claim.trip_title}
+                          </button>
                           <Badge variant="outline" className="text-xs">{claim.status}</Badge>
                         </div>
                         <div className="text-muted-foreground text-xs mt-0.5">
@@ -988,7 +1000,9 @@ export default function Reports() {
                         <TableRow key={claim.id}>
                           <TableCell className="font-medium">{claim.traveller_name}</TableCell>
                           <TableCell className="text-sm">
-                            {claim.project_name}
+                            <button type="button" className="text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>
+                              {claim.project_name}
+                            </button>
                             {claim.project_number && <div className="text-xs text-muted-foreground">{claim.project_number}</div>}
                           </TableCell>
                           <TableCell className="text-sm">{claim.project_owner_name ?? "—"}</TableCell>
@@ -1020,6 +1034,13 @@ export default function Reports() {
           </TabsContent>
         )}
       </UrlTabs>
+
+      <ExpenseClaimDetail
+        claim={viewedClaim ?? null}
+        open={!!viewClaimId}
+        onOpenChange={(open) => { if (!open) setViewClaimId(null); }}
+      />
+      <ProjectClaimLinesDialog claim={viewProjectClaim} onClose={() => setViewProjectClaim(null)} />
     </div>
   );
 }

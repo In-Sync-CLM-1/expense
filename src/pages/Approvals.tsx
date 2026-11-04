@@ -13,7 +13,7 @@ import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { isRmplOrg } from "@/lib/rmplOrg";
 import {
-  useCurrentUser, usePendingApprovals, useAllApprovals,
+  useCurrentUser, usePendingApprovals, useAllApprovals, useExpenseClaimDetail,
   useApproveClaim, useRejectClaim,
   getStatusColor, getStatusLabel, type ExpenseClaim,
 } from "@/hooks/useExpenseClaims";
@@ -27,6 +27,8 @@ import {
 } from "@/hooks/useProjectExpenses";
 import { TravelClaimFiles, ProjectClaimFiles } from "@/components/expenses/SupportingFiles";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
+import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
+import { ProjectClaimLinesDialog } from "@/components/expenses/ProjectClaimLinesDialog";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
 import { ProjectExpenseApprovalCard } from "@/components/expenses/ProjectExpenseApprovalCard";
 import {
@@ -58,6 +60,9 @@ export default function Approvals() {
   const { data: allGiftingExpenses } = useAllGiftingExpenseClaims(currentOrg?.id, isRmpl && (permissions.isAdmin || permissions.isAccounts));
   const markGiftingExpenseReimbursed = useMarkGiftingExpenseReimbursed();
 
+  const [viewClaimId, setViewClaimId] = useState<string | null>(null);
+  const { data: viewedClaim } = useExpenseClaimDetail(viewClaimId ?? undefined);
+  const [viewProjectClaim, setViewProjectClaim] = useState<ProjectExpenseClaim | null>(null);
   const [rejectClaim, setRejectClaim] = useState<ExpenseClaim | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approveClaim, setApproveClaim] = useState<ExpenseClaim | null>(null);
@@ -196,7 +201,7 @@ export default function Approvals() {
                   <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{claim.trip_title}</span>
+                        <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>{claim.trip_title}</button>
                         <Badge variant={getStatusColor(claim.status)}>{getStatusLabel(claim.status)}</Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -327,7 +332,7 @@ export default function Approvals() {
                       <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">{claim.project_name}</span>
+                            <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>{claim.project_name}</button>
                             <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
@@ -361,7 +366,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.project_name}</span>
+                          <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>{claim.project_name}</button>
                           <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.traveller_name}</div>
@@ -522,6 +527,12 @@ export default function Approvals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ExpenseClaimDetail
+        claim={viewedClaim ?? null}
+        open={!!viewClaimId}
+        onOpenChange={(open) => { if (!open) setViewClaimId(null); }}
+      />
+      <ProjectClaimLinesDialog claim={viewProjectClaim} onClose={() => setViewProjectClaim(null)} />
     </div>
   );
 }
