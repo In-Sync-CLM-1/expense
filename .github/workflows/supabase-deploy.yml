@@ -38,7 +38,7 @@ jobs:
           echo
       - name: Push database migrations
         run: |
-          if [ -d supabase/migrations ]; then supabase db push --linked; else echo "no migrations"; fi
+          if [ -d supabase/migrations ]; then supabase db push --linked --yes; else echo "no migrations"; fi
       - name: Determine functions to deploy
         id: changed
         run: |
