@@ -6,7 +6,7 @@ import { toast } from "sonner";
 /**
  * Advance requests: a maker asks for money before it's given, their
  * assigned approver (profiles.approver_id) decides. Mirrors
- * Vendor-Sync's vendor_advance_requests mechanism. Approval doesn't
+ * Vendorsync's vendor_advance_requests mechanism. Approval doesn't
  * hand out money by itself — Accounts still records the actual
  * disbursement via expense_advances (see useAdvances.ts), linked back
  * via advance_request_id.

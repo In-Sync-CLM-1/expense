@@ -14,7 +14,7 @@ const CLAUDE_VISION_MODEL = "claude-opus-4-8";
 // no fallback at all -- every text-layer PDF receipt/bill upload failed
 // outright with "please fill in manually" whenever Groq had any issue.
 // openai/gpt-oss-120b confirmed live + tool-calling capable (same
-// replacement already proven on globalcrm/crm/Vendor-Sync), and this path
+// replacement already proven on globalcrm/crm/Vendorsync), and this path
 // now falls back to Claude (callTextAI below) same as every other path here.
 const TEXT_MODEL = "openai/gpt-oss-120b";
 // Groq-first for images too, same as the rest of this sweep -- qwen/qwen3.6-27b
@@ -269,7 +269,7 @@ async function callVision(
 
 // Text-only Claude fallback for the PDF-with-text-layer path -- that path had
 // NO fallback at all before this (same gap already fixed the same way in
-// Vendor-Sync's parse-bank-statement this session): every text-layer PDF
+// Vendorsync's parse-bank-statement this session): every text-layer PDF
 // failed outright whenever Groq was down, rate-limited, or over capacity.
 const CLAUDE_TEXT_MODEL = "claude-haiku-4-5-20251001";
 
