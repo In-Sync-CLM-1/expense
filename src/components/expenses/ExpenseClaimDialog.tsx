@@ -88,6 +88,9 @@ interface DraftItem {
   tampering_reason?: string | null;
 }
 
+// A line with no project chosen counts as General / Non-Project (999).
+const projectOf = (item: DraftItem) => item.project ?? GENERAL_PROJECT_OPTION;
+
 const emptyItem: DraftItem = {
   expense_type: "",
   description: "",
@@ -340,7 +343,7 @@ export function ExpenseClaimDialog({
         toast.error("No expense rows found in that file.");
       }
       if (unknownNumbers.length > 0) {
-        toast.error(`These project numbers were not found, so please pick the project on those lines: ${unknownNumbers.slice(0, 5).join(", ")}`, { duration: 8000 });
+        toast.error(`These project numbers were not found, so those lines are set to General (999). Please change them if needed: ${unknownNumbers.slice(0, 5).join(", ")}`, { duration: 8000 });
       }
     } catch (err) {
       console.error("Excel import failed:", err);
@@ -388,7 +391,7 @@ export function ExpenseClaimDialog({
     !!tripData.trip_title &&
     items.length > 0 &&
     items.every(
-      (item) => item.expense_type && item.amount && item.expense_date && (!isRmpl || !!item.project),
+      (item) => item.expense_type && item.amount && item.expense_date,
     );
 
   const handleSubmit = async (asDraft: boolean) => {
@@ -415,7 +418,7 @@ export function ExpenseClaimDialog({
         const flagAmountMismatch =
           aiAmount != null && submittedAmount > aiAmount + amountMismatchTolerance;
 
-        const lineProject = isRmpl ? item.project ?? null : null;
+        const lineProject = isRmpl ? projectOf(item) : null;
         claimItems.push({
           rmpl_project_id: lineProject && lineProject.id !== GENERAL_PROJECT_OPTION.id ? lineProject.id : null,
           project_number: lineProject?.project_number ?? null,
@@ -436,8 +439,8 @@ export function ExpenseClaimDialog({
       }
 
       // The claim keeps a project only when every line shares the same real one.
-      const lineProjectIds = new Set(items.map((item) => item.project?.id ?? null));
-      const firstProject = items[0]?.project ?? null;
+      const lineProjectIds = new Set(items.map((item) => projectOf(item).id));
+      const firstProject = items[0] ? projectOf(items[0]) : null;
       const claimProject =
         isRmpl && lineProjectIds.size === 1 && firstProject && firstProject.id !== GENERAL_PROJECT_OPTION.id
           ? firstProject
@@ -593,10 +596,10 @@ export function ExpenseClaimDialog({
                   )}
                   {isRmpl && (
                     <div className="space-y-1 pr-8">
-                      <Label className="text-xs">Project *</Label>
+                      <Label className="text-xs">Project</Label>
                       <ProjectExpenseProjectCombobox
-                        value={item.project?.id ?? null}
-                        valueName={item.project ? [item.project.project_number, item.project.project_name].filter(Boolean).join(" · ") : null}
+                        value={projectOf(item).id}
+                        valueName={[projectOf(item).project_number, projectOf(item).project_name].filter(Boolean).join(" · ")}
                         onChange={(project) => updateItemProject(index, project)}
                         showGeneral
                       />
