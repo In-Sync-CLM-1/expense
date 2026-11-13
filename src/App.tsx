@@ -29,6 +29,7 @@ import PlatformLayout from "./pages/platform/PlatformLayout";
 import CommandCenter from "./pages/platform/CommandCenter";
 import PlatformOrgs from "./pages/platform/PlatformOrgs";
 import PlatformUsers from "./pages/platform/PlatformUsers";
+import { LedgerAccessTrail } from "@/lib/LedgerAccessTrail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ export default function App() {
                   survive navigation, tab-focus session revalidation, etc. */}
               <ExpenseClaimDialogProvider>
               <BrowserRouter>
+                <LedgerAccessTrail />
                 <Routes>
                   {/* Public */}
                   <Route path="/" element={<RootRoute />} />
@@ -88,7 +90,8 @@ export default function App() {
                     <Route path="/dashboard"   element={<Dashboard />} />
                     <Route path="/my-expenses" element={<MyExpenses />} />
                     <Route path="/project-expenses" element={<ProjectExpenses />} />
-                    <Route path="/gifting-expenses" element={<GiftingExpenses />} />
+                    <Route path="/field-expenses" element={<GiftingExpenses />} />
+                    <Route path="/gifting-expenses" element={<Navigate to="/field-expenses" replace />} />
                     <Route path="/approvals"   element={<Approvals />} />
                     <Route path="/advances"    element={<Advances />} />
                     <Route path="/reports"     element={<Reports />} />

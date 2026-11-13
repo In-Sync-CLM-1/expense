@@ -292,7 +292,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             )}
           </div>
 
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Name *</Label>
               <Input className="h-9" value={travellerName} onChange={(e) => setTravellerName(e.target.value)} />
@@ -308,9 +308,9 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Period</Label>
               <div className="flex items-center gap-1.5">
-                <Input type="date" className="h-9 flex-1" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                <Input type="date" className="h-9 flex-1 min-w-0" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
                 <span className="text-muted-foreground text-sm shrink-0">–</span>
-                <Input type="date" className="h-9 flex-1" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+                <Input type="date" className="h-9 flex-1 min-w-0" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
               </div>
             </div>
           </div>
@@ -426,7 +426,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           <div className="space-y-3">
             <Label className="text-sm font-semibold">Travel Log (optional)</Label>
             {travelLogs.map((log, index) => (
-              <div key={index} className="grid grid-cols-6 gap-2 items-end border rounded-lg p-2 [&>*]:min-w-0">
+              <div key={index} className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end border rounded-lg p-2 [&>*]:min-w-0">
                 <div className="space-y-1">
                   <Label className="text-xs">Date</Label>
                   <Input type="date" className="h-9" value={log.travel_date} onChange={(e) => updateTravelLog(index, "travel_date", e.target.value)} />
@@ -479,7 +479,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-2 sticky -bottom-6 -mx-6 px-6 py-3 bg-background border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
             <div className="flex gap-2 ml-auto">
               <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={submitting || !project || !travellerName.trim()}>

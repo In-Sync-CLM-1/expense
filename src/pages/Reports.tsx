@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,13 @@ import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { isRmplOrg } from "@/lib/rmplOrg";
-import { useMarkReimbursed, useCurrentUser, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { useMarkReimbursed, useCurrentUser, useExpenseClaimDetail, EXPENSE_TYPES, type ExpenseClaim } from "@/hooks/useExpenseClaims";
+import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
+import { ProjectClaimLinesDialog } from "@/components/expenses/ProjectClaimLinesDialog";
 import {
   useAllProjectExpenseClaims, useMarkProjectExpenseReimbursed, useProjectExpenseSummary,
   getProjectExpenseStatusColor, getProjectExpenseStatusLabel,
+  type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
 import {
   exportClaimsToCSV,
@@ -31,6 +34,8 @@ import {
   type TeamRow,
 } from "@/lib/expenseExport";
 import { EChart, viz, vizAxisLabel, vizSplitLine, vizTooltip } from "@/components/charts/EChart";
+import { UrlTabs } from "@/components/UrlTabs";
+import { PageTitle, StatTile } from "@/components/StatTile";
 
 // Compact INR in Indian units — matches the org's own ₹…L stat-card convention
 const inr = (n: number): string => {
@@ -199,6 +204,9 @@ export default function Reports() {
   const { currentOrg } = useOrg();
   const { data: currentUser } = useCurrentUser();
   const isRmpl = isRmplOrg(currentOrg?.id);
+  const [viewClaimId, setViewClaimId] = useState<string | null>(null);
+  const { data: viewedClaim } = useExpenseClaimDetail(viewClaimId ?? undefined);
+  const [viewProjectClaim, setViewProjectClaim] = useState<ProjectExpenseClaim | null>(null);
   const { data: projectExpenseClaims, isLoading: projectExpensesLoading } = useAllProjectExpenseClaims(currentOrg?.id, isRmpl && permissions.canViewReports);
   const { data: projectSummary, isLoading: projectSummaryLoading } = useProjectExpenseSummary(currentOrg?.id, isRmpl && permissions.canViewReports);
   const markProjectExpenseReimbursed = useMarkProjectExpenseReimbursed();
@@ -481,12 +489,10 @@ export default function Reports() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-7 w-7" /> Expense Reports
-          </h1>
+          <PageTitle eyebrow="Manage">Expense Reports</PageTitle>
           <p className="text-muted-foreground">Organisation-wide expense analytics and exports</p>
         </div>
         <div className="flex items-end gap-2 flex-wrap">
@@ -525,12 +531,12 @@ export default function Reports() {
       {/* Org-wide stat cards */}
       {orgStats && (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-          <StatCard icon={<BarChart3 className="h-4 w-4 text-blue-500" />} label="Total Claims" value={orgStats.total} />
-          <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending" value={orgStats.pending} highlight={orgStats.pending > 0} />
-          <StatCard icon={<CheckCircle className="h-4 w-4 text-green-500" />} label="Approved" value={orgStats.approved} />
-          <StatCard icon={<Banknote className="h-4 w-4 text-purple-500" />} label="Reimbursed" value={orgStats.reimbursed} />
-          <StatCard icon={<IndianRupee className="h-4 w-4 text-blue-500" />} label="Total Claimed" value={`₹${(orgStats.totalClaimed / 100000).toFixed(1)}L`} />
-          <StatCard icon={<IndianRupee className="h-4 w-4 text-green-500" />} label="Total Approved" value={`₹${(orgStats.totalApproved / 100000).toFixed(1)}L`} />
+          <StatCard icon={<BarChart3 className="h-4 w-4 text-primary" />} label="Total Claims" value={orgStats.total} />
+          <StatCard icon={<Clock className="h-4 w-4 text-primary" />} label="Pending" value={orgStats.pending} highlight={orgStats.pending > 0} />
+          <StatCard icon={<CheckCircle className="h-4 w-4 text-primary" />} label="Approved" value={orgStats.approved} />
+          <StatCard icon={<Banknote className="h-4 w-4 text-primary" />} label="Reimbursed" value={orgStats.reimbursed} />
+          <StatCard icon={<IndianRupee className="h-4 w-4 text-primary" />} label="Total Claimed" value={`₹${(orgStats.totalClaimed / 100000).toFixed(1)}L`} />
+          <StatCard icon={<IndianRupee className="h-4 w-4 text-primary" />} label="Total Approved" value={`₹${(orgStats.totalApproved / 100000).toFixed(1)}L`} />
           <StatCard
             icon={<ReceiptText className="h-4 w-4 text-emerald-600" />}
             label="Recoverable GST"
@@ -539,8 +545,8 @@ export default function Reports() {
         </div>
       )}
 
-      <Tabs defaultValue="overview">
-        <TabsList>
+      <UrlTabs param="reports_tab" defaultValue="overview">
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
           <TabsTrigger value="teams">By Team</TabsTrigger>
@@ -807,7 +813,11 @@ export default function Reports() {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell>{claim.trip_title}</TableCell>
+                        <TableCell>
+                          <button type="button" className="text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>
+                            {claim.trip_title}
+                          </button>
+                        </TableCell>
                         <TableCell>{claim.destination ?? "—"}</TableCell>
                         <TableCell>
                           {claim.approved_at
@@ -864,7 +874,9 @@ export default function Reports() {
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{claim.trip_title}</span>
+                          <button type="button" className="font-medium text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>
+                            {claim.trip_title}
+                          </button>
                           <Badge variant="outline" className="text-xs">{claim.status}</Badge>
                         </div>
                         <div className="text-muted-foreground text-xs mt-0.5">
@@ -896,10 +908,10 @@ export default function Reports() {
           <TabsContent value="project-expenses" className="mt-4 space-y-4">
             {projectExpenseStats && (
               <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                <StatCard icon={<BarChart3 className="h-4 w-4 text-blue-500" />} label="Total Claims" value={projectExpenseStats.total} />
-                <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending Owner Approval" value={projectExpenseStats.pending} highlight={projectExpenseStats.pending > 0} />
-                <StatCard icon={<IndianRupee className="h-4 w-4 text-amber-500" />} label="Awaiting Payment" value={`₹${projectExpenseStats.awaitingPaymentAmount.toLocaleString("en-IN")}`} highlight={projectExpenseStats.awaitingPayment > 0} />
-                <StatCard icon={<Banknote className="h-4 w-4 text-purple-500" />} label="Total Actual Expense" value={`₹${projectExpenseStats.totalActual.toLocaleString("en-IN")}`} />
+                <StatCard icon={<BarChart3 className="h-4 w-4 text-primary" />} label="Total Claims" value={projectExpenseStats.total} />
+                <StatCard icon={<Clock className="h-4 w-4 text-primary" />} label="Pending Owner Approval" value={projectExpenseStats.pending} highlight={projectExpenseStats.pending > 0} />
+                <StatCard icon={<IndianRupee className="h-4 w-4 text-primary" />} label="Awaiting Payment" value={`₹${projectExpenseStats.awaitingPaymentAmount.toLocaleString("en-IN")}`} highlight={projectExpenseStats.awaitingPayment > 0} />
+                <StatCard icon={<Banknote className="h-4 w-4 text-primary" />} label="Total Actual Expense" value={`₹${projectExpenseStats.totalActual.toLocaleString("en-IN")}`} />
               </div>
             )}
 
@@ -988,7 +1000,9 @@ export default function Reports() {
                         <TableRow key={claim.id}>
                           <TableCell className="font-medium">{claim.traveller_name}</TableCell>
                           <TableCell className="text-sm">
-                            {claim.project_name}
+                            <button type="button" className="text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>
+                              {claim.project_name}
+                            </button>
                             {claim.project_number && <div className="text-xs text-muted-foreground">{claim.project_number}</div>}
                           </TableCell>
                           <TableCell className="text-sm">{claim.project_owner_name ?? "—"}</TableCell>
@@ -1019,7 +1033,14 @@ export default function Reports() {
             </Card>
           </TabsContent>
         )}
-      </Tabs>
+      </UrlTabs>
+
+      <ExpenseClaimDetail
+        claim={viewedClaim ?? null}
+        open={!!viewClaimId}
+        onOpenChange={(open) => { if (!open) setViewClaimId(null); }}
+      />
+      <ProjectClaimLinesDialog claim={viewProjectClaim} onClose={() => setViewProjectClaim(null)} />
     </div>
   );
 }
@@ -1027,12 +1048,5 @@ export default function Reports() {
 function StatCard({ icon, label, value, highlight }: {
   icon: React.ReactNode; label: string; value: React.ReactNode; highlight?: boolean;
 }) {
-  return (
-    <Card className={highlight ? "border-yellow-300" : ""}>
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 mb-1">{icon}<span className="text-xs font-medium text-muted-foreground">{label}</span></div>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  );
+  return <StatTile icon={icon} label={label} value={value} tone={highlight ? "amber" : "primary"} />;
 }

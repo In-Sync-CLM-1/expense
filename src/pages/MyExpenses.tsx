@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +16,14 @@ import { useOrg } from "@/contexts/OrgContext";
 import { MyAdvanceSummary } from "@/components/expenses/MyAdvanceSummary";
 import { MyAdvanceRequestsList } from "@/components/expenses/MyAdvanceRequestsList";
 import { useExpenseClaimDialog } from "@/contexts/ExpenseClaimDialogContext";
+import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle, StatTile } from "@/components/StatTile";
 
 export default function MyExpenses() {
   const { openNewClaim } = useExpenseClaimDialog();
   const [requestAdvanceOpen, setRequestAdvanceOpen] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const { currentOrg } = useOrg();
 
   const { data: user } = useCurrentUser();
@@ -40,16 +43,15 @@ export default function MyExpenses() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
+      <ClaimTypeTabs />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Receipt className="h-7 w-7" /> My Expenses
-          </h1>
+          <PageTitle eyebrow="Claims">My Expenses</PageTitle>
           <p className="text-muted-foreground">Submit and track your expense claims</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setRequestAdvanceOpen(true)} size="lg">
             <HandCoins className="mr-2 h-4 w-4" /> Request Advance
           </Button>
@@ -61,10 +63,10 @@ export default function MyExpenses() {
 
       {/* Stats */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <StatCard icon={<Receipt className="h-4 w-4 text-blue-500" />} label="Total Claims" value={stats.total} />
-        <StatCard icon={<Clock className="h-4 w-4 text-yellow-500" />} label="Pending" value={stats.pending} sub={`₹${stats.pendingAmount.toLocaleString("en-IN")}`} highlight={stats.pending > 0} />
-        <StatCard icon={<CheckCircle2 className="h-4 w-4 text-green-500" />} label="Approved" value={stats.approved} sub={`₹${stats.approvedAmount.toLocaleString("en-IN")}`} />
-        <StatCard icon={<IndianRupee className="h-4 w-4 text-purple-500" />} label="Total Claimed" value={`₹${stats.totalAmount.toLocaleString("en-IN")}`} />
+        <StatCard icon={<Receipt className="h-4 w-4 text-primary" />} label="Total Claims" value={stats.total} />
+        <StatCard icon={<Clock className="h-4 w-4 text-primary" />} label="Pending" value={stats.pending} sub={`₹${stats.pendingAmount.toLocaleString("en-IN")}`} highlight={stats.pending > 0} />
+        <StatCard icon={<CheckCircle2 className="h-4 w-4 text-primary" />} label="Approved" value={stats.approved} sub={`₹${stats.approvedAmount.toLocaleString("en-IN")}`} />
+        <StatCard icon={<IndianRupee className="h-4 w-4 text-primary" />} label="Total Claimed" value={`₹${stats.totalAmount.toLocaleString("en-IN")}`} />
       </div>
 
       {/* My advance position (shown only when the employee holds advances) */}
@@ -128,15 +130,7 @@ export default function MyExpenses() {
 function StatCard({ icon, label, value, sub, highlight }: {
   icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; highlight?: boolean;
 }) {
-  return (
-    <Card className={highlight ? "border-yellow-300" : ""}>
-      <CardContent className="pt-4">
-        <div className="flex items-center gap-2 mb-1">{icon}<span className="text-sm font-medium">{label}</span></div>
-        <div className="text-3xl font-bold">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
+  return <StatTile icon={icon} label={label} value={value} note={sub} tone={highlight ? "amber" : "primary"} />;
 }
 
 function ClaimRow({ claim, onClick }: { claim: ExpenseClaim; onClick: () => void }) {

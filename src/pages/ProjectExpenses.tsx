@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +18,14 @@ import {
 import { ProjectExpenseClaimDialog } from "@/components/expenses/ProjectExpenseClaimDialog";
 import { AttachmentLinks } from "@/components/expenses/LineAttachments";
 import { attachmentsOf } from "@/lib/lineAttachments";
+import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle } from "@/components/StatTile";
 
 export default function ProjectExpenses() {
   const { currentOrg } = useOrg();
   const { data: user } = useCurrentUser();
   const [newOpen, setNewOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
 
   const { data: claims, isLoading } = useMyProjectExpenseClaims(user?.id);
@@ -41,12 +44,11 @@ export default function ProjectExpenses() {
   const filtered = claims?.filter((c) => statusFilter === "all" || c.status === statusFilter) ?? [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
+      <ClaimTypeTabs />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Briefcase className="h-7 w-7" /> Project Expenses
-          </h1>
+          <PageTitle eyebrow="Claims">Project Expenses</PageTitle>
           <p className="text-muted-foreground">File expenses against an RMPL project — approved by the Project Owner</p>
         </div>
         <Button onClick={() => setNewOpen(true)} size="lg">

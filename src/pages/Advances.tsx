@@ -41,6 +41,8 @@ import {
   type ReconciliationRow,
 } from "@/hooks/useAdvances";
 import { useApprovedUndisbursedRequests, type AdvanceRequest } from "@/hooks/useAdvanceRequests";
+import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle, StatTile } from "@/components/StatTile";
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
@@ -53,7 +55,7 @@ export default function Advances() {
   const { data: reconciliation, isLoading } = useAdvanceReconciliation(currentOrg?.id, canAccess);
   const { data: register } = useAdvancesList(canAccess ? currentOrg?.id : undefined);
   const { data: undisbursed } = useApprovedUndisbursedRequests(canAccess ? currentOrg?.id : undefined);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [recordOpen, setRecordOpen] = useState(false);
   const [fundRequest, setFundRequest] = useState<AdvanceRequest | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -125,13 +127,10 @@ export default function Advances() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <HandCoins className="h-7 w-7" />
-            Advances
-          </h1>
+          <PageTitle eyebrow="Accounts">Advances</PageTitle>
           <p className="text-muted-foreground">
             Money advanced to employees, settled against the expenses they file
           </p>
@@ -143,10 +142,10 @@ export default function Advances() {
 
       {/* KPIs */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <KpiCard icon={<IndianRupee className="h-4 w-4 text-blue-500" />} label="Total Advances Given" value={inr(totals.given)} />
-        <KpiCard icon={<Wallet className="h-4 w-4 text-amber-500" />} label="Unspent (to recover)" value={inr(totals.unspent)} hint="Employees holding money" />
+        <KpiCard icon={<IndianRupee className="h-4 w-4 text-primary" />} label="Total Advances Given" value={inr(totals.given)} />
+        <KpiCard icon={<Wallet className="h-4 w-4 text-primary" />} label="Unspent (to recover)" value={inr(totals.unspent)} hint="Employees holding money" />
         <KpiCard icon={<IndianRupee className="h-4 w-4 text-green-600" />} label="Payable (overspent)" value={inr(totals.payable)} hint="Company still owes" />
-        <KpiCard icon={<Users className="h-4 w-4 text-purple-500" />} label="Employees with Advances" value={String(totals.people)} />
+        <KpiCard icon={<Users className="h-4 w-4 text-primary" />} label="Employees with Advances" value={String(totals.people)} />
       </div>
 
       {!!undisbursed?.length && (
@@ -331,18 +330,7 @@ export default function Advances() {
 }
 
 function KpiCard({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-4">
-        <div className="flex items-center gap-2 mb-1">
-          {icon}
-          <span className="text-sm font-medium">{label}</span>
-        </div>
-        <div className="text-2xl font-bold">{value}</div>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </CardContent>
-    </Card>
-  );
+  return <StatTile icon={icon} label={label} value={value} note={hint} />;
 }
 
 function ReconRow({ row }: { row: ReconciliationRow }) {

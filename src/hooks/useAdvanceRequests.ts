@@ -1,11 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /**
  * Advance requests: a maker asks for money before it's given, their
  * assigned approver (profiles.approver_id) decides. Mirrors
- * Vendor-Sync's vendor_advance_requests mechanism. Approval doesn't
+ * Vendorsync's vendor_advance_requests mechanism. Approval doesn't
  * hand out money by itself — Accounts still records the actual
  * disbursement via expense_advances (see useAdvances.ts), linked back
  * via advance_request_id.
@@ -219,16 +220,18 @@ export function useApprovedUndisbursedRequests(orgId?: string) {
   });
 }
 
-/** RMPL's live projects, every status, read-only. */
-export function useRmplProjects(enabled = true) {
+/** Searches RMPL projects, every status, read-only (see useRmplProjectsForExpense). */
+export function useRmplProjects(enabled = true, search = "") {
+  const term = useDebouncedValue(search.trim(), 250);
   return useQuery({
-    queryKey: ["rmpl-projects"],
+    queryKey: ["rmpl-projects", term],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("list-rmpl-projects");
+      const { data, error } = await supabase.functions.invoke("list-rmpl-projects", { body: { search: term } });
       if (error) throw new Error("Could not load projects from RMPL");
       return (data?.projects || []) as RmplProject[];
     },
-    enabled,
+    enabled: enabled && term.length > 0,
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 }

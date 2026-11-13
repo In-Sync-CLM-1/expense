@@ -9,7 +9,7 @@ import { Plus, Trash2, Loader2, Gift, AlertTriangle, FileSpreadsheet, Download }
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
-import { useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/useProjectExpenses";
+import { lookupRmplProjects, type RmplProjectOption } from "@/hooks/useProjectExpenses";
 import { useCreateGiftingExpenseClaim } from "@/hooks/useGiftingExpenses";
 import { downloadGiftingImportTemplate, parseGiftingImportFile } from "@/lib/giftingExcelImport";
 import { useQuery } from "@tanstack/react-query";
@@ -57,7 +57,6 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const { data: ownName } = useOwnFullName(userId);
-  const { data: rmplProjects = [] } = useRmplProjectsForExpense(open);
 
   const [filerName, setFilerName] = useState("");
   const [periodFrom, setPeriodFrom] = useState("");
@@ -88,7 +87,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
   const setLineFiles = (i: number, files: File[]) => updateLine(i, { files });
   const totalFiles = lines.reduce((n, l) => n + l.files.length, 0);
 
-  const matchProject = (projectNumber: string): RmplProjectOption | undefined => {
+  const matchProject = (rmplProjects: RmplProjectOption[], projectNumber: string): RmplProjectOption | undefined => {
     const q = projectNumber.trim().toLowerCase();
     return (
       rmplProjects.find((p) => (p.project_number ?? "").trim().toLowerCase() === q) ||
@@ -103,9 +102,10 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
     try {
       const { lines: parsedLines, errors } = await parseGiftingImportFile(file);
 
+      const rmplProjects = await lookupRmplProjects([...new Set(parsedLines.map((l) => l.project_number.trim()).filter(Boolean))]);
       let unmatched = 0;
       const resolved: DraftLine[] = parsedLines.map((l) => {
-        const match = matchProject(l.project_number);
+        const match = matchProject(rmplProjects, l.project_number);
         if (!match) unmatched++;
         return {
           line_date: l.line_date,
@@ -186,7 +186,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
       <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" /> New Gifting Expense
+            <Gift className="h-5 w-5" /> New Field Expense
           </DialogTitle>
         </DialogHeader>
 
@@ -196,7 +196,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             This goes straight to Accounts for payment; there's no per-project approval step.
           </p>
 
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Name *</Label>
               <Input className="h-9" value={filerName} onChange={(e) => setFilerName(e.target.value)} />
@@ -204,9 +204,9 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             <div className="space-y-1.5 col-span-2 min-w-0">
               <Label>Period</Label>
               <div className="flex items-center gap-1.5">
-                <Input type="date" className="h-9 flex-1" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                <Input type="date" className="h-9 flex-1 min-w-0" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
                 <span className="text-muted-foreground text-sm shrink-0">–</span>
-                <Input type="date" className="h-9 flex-1" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+                <Input type="date" className="h-9 flex-1 min-w-0" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
               </div>
             </div>
           </div>
@@ -214,7 +214,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
           {/* Gifting lines */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">Gifting Lines</Label>
+              <Label className="text-sm font-semibold">Field Expense Lines</Label>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -319,7 +319,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-2" /> Add Gifting Line
+              <Plus className="h-4 w-4 mr-2" /> Add Field Expense Line
             </Button>
           </div>
 
@@ -331,7 +331,7 @@ export function GiftingExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-2 sticky -bottom-6 -mx-6 px-6 py-3 bg-background border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
             <div className="flex gap-2 ml-auto">
               <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={submitting || !filerName.trim()}>

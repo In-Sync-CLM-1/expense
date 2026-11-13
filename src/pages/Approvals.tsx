@@ -2,18 +2,18 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, ShieldCheck, IndianRupee, Gift } from "lucide-react";
+import { Loader2, CheckCircle, IndianRupee, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useOrg } from "@/contexts/OrgContext";
 import { isRmplOrg } from "@/lib/rmplOrg";
 import {
-  useCurrentUser, usePendingApprovals, useAllApprovals,
+  useCurrentUser, usePendingApprovals, useAllApprovals, useExpenseClaimDetail,
   useApproveClaim, useRejectClaim,
   getStatusColor, getStatusLabel, type ExpenseClaim,
 } from "@/hooks/useExpenseClaims";
@@ -25,13 +25,18 @@ import {
   useApproveProjectExpenseClaim, useRejectProjectExpenseClaim, useMarkProjectExpenseReimbursed,
   getProjectExpenseStatusColor, getProjectExpenseStatusLabel, type ProjectExpenseClaim,
 } from "@/hooks/useProjectExpenses";
+import { TravelClaimFiles, ProjectClaimFiles } from "@/components/expenses/SupportingFiles";
 import { ApprovalCard } from "@/components/expenses/ApprovalCard";
+import { ExpenseClaimDetail } from "@/components/expenses/ExpenseClaimDetail";
+import { ProjectClaimLinesDialog } from "@/components/expenses/ProjectClaimLinesDialog";
 import { AdvanceRequestApprovalCard } from "@/components/expenses/AdvanceRequestApprovalCard";
 import { ProjectExpenseApprovalCard } from "@/components/expenses/ProjectExpenseApprovalCard";
 import {
   useAllGiftingExpenseClaims, useMarkGiftingExpenseReimbursed,
   getGiftingStatusColor, getGiftingStatusLabel,
 } from "@/hooks/useGiftingExpenses";
+import { UrlTabs } from "@/components/UrlTabs";
+import { PageTitle } from "@/components/StatTile";
 
 export default function Approvals() {
   const { data: user } = useCurrentUser();
@@ -55,6 +60,9 @@ export default function Approvals() {
   const { data: allGiftingExpenses } = useAllGiftingExpenseClaims(currentOrg?.id, isRmpl && (permissions.isAdmin || permissions.isAccounts));
   const markGiftingExpenseReimbursed = useMarkGiftingExpenseReimbursed();
 
+  const [viewClaimId, setViewClaimId] = useState<string | null>(null);
+  const { data: viewedClaim } = useExpenseClaimDetail(viewClaimId ?? undefined);
+  const [viewProjectClaim, setViewProjectClaim] = useState<ProjectExpenseClaim | null>(null);
   const [rejectClaim, setRejectClaim] = useState<ExpenseClaim | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approveClaim, setApproveClaim] = useState<ExpenseClaim | null>(null);
@@ -106,15 +114,13 @@ export default function Approvals() {
   const giftingHistory = allGiftingExpenses?.filter((c) => c.status === "reimbursed") ?? [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ShieldCheck className="h-7 w-7" /> Expense Approvals
-        </h1>
+        <PageTitle eyebrow="Review">Expense Approvals</PageTitle>
         <p className="text-muted-foreground">Review and approve team expense claims</p>
       </div>
 
-      <Tabs defaultValue="claims">
+      <UrlTabs param="approvals_tab" defaultValue="claims">
         <TabsList>
           <TabsTrigger value="claims" className="flex gap-2">
             Expense Claims
@@ -140,7 +146,7 @@ export default function Approvals() {
           )}
           {isRmpl && (permissions.isAdmin || permissions.isAccounts) && (
             <TabsTrigger value="gifting" className="flex gap-2 items-center">
-              <Gift className="h-3.5 w-3.5" /> Gifting
+              <Gift className="h-3.5 w-3.5" /> Field expenses
               {giftingAwaitingPayment.length > 0 && (
                 <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs">{giftingAwaitingPayment.length}</Badge>
               )}
@@ -150,7 +156,7 @@ export default function Approvals() {
 
         {/* Expense Claims */}
         <TabsContent value="claims" className="mt-4">
-          <Tabs defaultValue="pending">
+          <UrlTabs param="approvals_tab2" defaultValue="pending">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <TabsList>
                 <TabsTrigger value="pending" className="flex gap-2">
@@ -195,7 +201,7 @@ export default function Approvals() {
                   <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{claim.trip_title}</span>
+                        <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewClaimId(claim.id)}>{claim.trip_title}</button>
                         <Badge variant={getStatusColor(claim.status)}>{getStatusLabel(claim.status)}</Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -217,12 +223,12 @@ export default function Approvals() {
                 ))
               )}
             </TabsContent>
-          </Tabs>
+          </UrlTabs>
         </TabsContent>
 
         {/* Advance Requests */}
         <TabsContent value="advances" className="mt-4">
-          <Tabs defaultValue="pending">
+          <UrlTabs param="approvals_tab3" defaultValue="pending">
             <TabsList>
               <TabsTrigger value="pending" className="flex gap-2">
                 Pending
@@ -284,7 +290,7 @@ export default function Approvals() {
                 ))
               )}
             </TabsContent>
-          </Tabs>
+          </UrlTabs>
         </TabsContent>
 
         {/* Project Expenses (RMPL only) */}
@@ -326,7 +332,7 @@ export default function Approvals() {
                       <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">{claim.project_name}</span>
+                            <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>{claim.project_name}</button>
                             <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
@@ -360,7 +366,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.project_name}</span>
+                          <button type="button" className="font-semibold text-left hover:underline" onClick={() => setViewProjectClaim(claim)}>{claim.project_name}</button>
                           <Badge variant={getProjectExpenseStatusColor(claim.status)}>{getProjectExpenseStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.traveller_name}</div>
@@ -391,7 +397,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
@@ -422,7 +428,7 @@ export default function Approvals() {
                     <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold">{claim.period || "Gifting Expense"}</span>
+                          <span className="font-semibold">{claim.period || "Field Expense"}</span>
                           <Badge variant={getGiftingStatusColor(claim.status)}>{getGiftingStatusLabel(claim.status)}</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{claim.filer_name}</div>
@@ -437,7 +443,7 @@ export default function Approvals() {
             </div>
           </TabsContent>
         )}
-      </Tabs>
+      </UrlTabs>
 
       {/* Reject Project Expense Dialog */}
       <Dialog open={!!rejectPE} onOpenChange={(o) => { if (!o) setRejectPE(null); }}>
@@ -448,6 +454,7 @@ export default function Approvals() {
               <strong>{rejectPE?.project_name}</strong> by {rejectPE?.traveller_name}<br />
               Amount: ₹{Number(rejectPE?.actual_expense_total ?? 0).toLocaleString("en-IN")}
             </p>
+            {rejectPE && <ProjectClaimFiles claimId={rejectPE.id} />}
             <div className="space-y-2">
               <Label>Reason for Rejection *</Label>
               <Textarea value={rejectPEReason} onChange={(e) => setRejectPEReason(e.target.value)} placeholder="Please provide a reason" rows={3} />
@@ -478,6 +485,7 @@ export default function Approvals() {
               <Input type="number" value={approvedAmount} onChange={(e) => setApprovedAmount(e.target.value)} />
               <p className="text-xs text-muted-foreground">Leave as-is to approve the full amount</p>
             </div>
+            {approveClaim && <TravelClaimFiles claim={approveClaim} />}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveClaim(null)}>Cancel</Button>
@@ -498,6 +506,7 @@ export default function Approvals() {
               <strong>{rejectClaim?.trip_title}</strong> by {rejectClaim?.profiles?.full_name}<br />
               Amount: ₹{Number(rejectClaim?.total_amount ?? 0).toLocaleString("en-IN")}
             </p>
+            {rejectClaim && <TravelClaimFiles claim={rejectClaim} />}
             <div className="space-y-2">
               <Label>Reason for Rejection *</Label>
               <Textarea
@@ -518,6 +527,12 @@ export default function Approvals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ExpenseClaimDetail
+        claim={viewedClaim ?? null}
+        open={!!viewClaimId}
+        onOpenChange={(open) => { if (!open) setViewClaimId(null); }}
+      />
+      <ProjectClaimLinesDialog claim={viewProjectClaim} onClose={() => setViewProjectClaim(null)} />
     </div>
   );
 }

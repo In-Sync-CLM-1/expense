@@ -55,11 +55,37 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Not signed in" }, 401);
     }
 
+    // RMPL has ~1,000+ projects and PostgREST silently caps any single read
+    // at 1,000 rows, so the picker never loads the whole list. It searches
+    // instead: `search` (name or project number), `ids` (resolve a saved
+    // selection) or `numbers` (exact project numbers / names, for the Excel
+    // import). With none of them nothing is fetched.
+    const body = await req.json().catch(() => ({})) as {
+      search?: string;
+      ids?: string[];
+      numbers?: string[];
+    };
+    const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner,status",
       order: "project_name.asc",
-      limit: "5000",
+      limit: "20",
     });
+    const ids = (body.ids ?? []).filter((v) => /^[0-9a-f-]{36}$/i.test(v)).slice(0, 200);
+    const numbers = (body.numbers ?? []).map((v) => String(v).trim()).filter(Boolean).slice(0, 500);
+    const term = String(body.search ?? "").replace(/[,()"*%\\]/g, " ").trim();
+    if (ids.length > 0) {
+      params.set("id", `in.(${ids.join(",")})`);
+      params.set("limit", "200");
+    } else if (numbers.length > 0) {
+      const list = numbers.map(quote).join(",");
+      params.set("or", `(project_number.in.(${list}),project_name.in.(${list}))`);
+      params.set("limit", "1000");
+    } else if (term) {
+      params.set("or", `(project_name.ilike.*${term}*,project_number.ilike.*${term}*)`);
+    } else {
+      return jsonResponse({ projects: [] });
+    }
 
     const rmplRes = await fetch(`${rmplUrl}/rest/v1/projects?${params.toString()}`, {
       headers: {

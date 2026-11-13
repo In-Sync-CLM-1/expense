@@ -12,7 +12,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Nunito Sans", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
+        display: ["Newsreader", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

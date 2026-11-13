@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClaimTypeTabs } from "@/components/ClaimTypeTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +18,14 @@ import {
 import { GiftingExpenseClaimDialog } from "@/components/expenses/GiftingExpenseClaimDialog";
 import { AttachmentLinks } from "@/components/expenses/LineAttachments";
 import { attachmentsOf } from "@/lib/lineAttachments";
+import { useUrlState } from "@/hooks/useUrlState";
+import { PageTitle } from "@/components/StatTile";
 
 export default function GiftingExpenses() {
   const { currentOrg } = useOrg();
   const { data: user } = useCurrentUser();
   const [newOpen, setNewOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useUrlState("status", "all");
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
 
   const { data: claims, isLoading } = useMyGiftingExpenseClaims(user?.id);
@@ -41,16 +44,15 @@ export default function GiftingExpenses() {
   const filtered = claims?.filter((c) => statusFilter === "all" || c.status === statusFilter) ?? [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-8 py-8 space-y-7 max-w-7xl">
+      <ClaimTypeTabs />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Gift className="h-7 w-7" /> Gifting Expenses
-          </h1>
+          <PageTitle eyebrow="Claims">Field Expenses</PageTitle>
           <p className="text-muted-foreground">One claim, many projects — no approval needed, straight to Accounts for payment</p>
         </div>
         <Button onClick={() => setNewOpen(true)} size="lg">
-          <Plus className="mr-2 h-4 w-4" /> New Gifting Expense
+          <Plus className="mr-2 h-4 w-4" /> New Field Expense
         </Button>
       </div>
 
@@ -73,7 +75,7 @@ export default function GiftingExpenses() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
               <Gift className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">No gifting expense claims found</p>
+              <p className="text-muted-foreground">No field expense claims found</p>
               <Button variant="outline" className="mt-4" onClick={() => setNewOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" /> Create your first claim
               </Button>
@@ -96,7 +98,7 @@ export default function GiftingExpenses() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5" /> Gifting Expense — {selectedClaim?.period || format(new Date(selectedClaim?.created_at ?? Date.now()), "MMM d, yyyy")}
+              <Gift className="h-5 w-5" /> Field Expense — {selectedClaim?.period || format(new Date(selectedClaim?.created_at ?? Date.now()), "MMM d, yyyy")}
             </DialogTitle>
           </DialogHeader>
           {selectedClaim && (

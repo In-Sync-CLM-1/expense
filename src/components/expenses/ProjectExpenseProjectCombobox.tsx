@@ -4,13 +4,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn, formatStatusLabel } from "@/lib/utils";
-import { useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/useProjectExpenses";
+import { GENERAL_PROJECT_OPTION, useRmplProjectsForExpense, type RmplProjectOption } from "@/hooks/useProjectExpenses";
 
 interface ProjectExpenseProjectComboboxProps {
   value: string | null;
   valueName?: string | null;
   onChange: (project: RmplProjectOption) => void;
   disabled?: boolean;
+  showGeneral?: boolean; // offers General / Non-Project (999) above the search results
 }
 
 // Same live RMPL project list used for Advance Requests, extended with
@@ -18,15 +19,12 @@ interface ProjectExpenseProjectComboboxProps {
 // the header fields and decides who approves the claim. Every RMPL
 // status is shown (RMPL's status field is user-entered and often stale),
 // with the status displayed alongside each project for context.
-export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disabled }: ProjectExpenseProjectComboboxProps) {
+export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disabled, showGeneral }: ProjectExpenseProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const { data: projects = [], isLoading, isError } = useRmplProjectsForExpense(open);
+  const { data: projects = [], isLoading, isError } = useRmplProjectsForExpense(open, search);
 
-  const q = search.trim().toLowerCase();
-  const filtered = projects.filter(
-    (p) => p.project_name.toLowerCase().includes(q) || (p.project_number ?? "").toLowerCase().includes(q)
-  );
+  const filtered = search.trim() ? projects : []; // searched server-side; nothing shown until typing
   const selected = projects.find((p) => p.id === value);
   const selectedName = selected?.project_name || valueName;
 
@@ -42,6 +40,17 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
         <Command shouldFilter={false}>
           <CommandInput placeholder="Search RMPL projects…" value={search} onValueChange={setSearch} />
           <CommandList>
+            {showGeneral && (
+              <CommandGroup>
+                <CommandItem
+                  value={GENERAL_PROJECT_OPTION.id}
+                  onSelect={() => { onChange(GENERAL_PROJECT_OPTION); setSearch(""); setOpen(false); }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", value === GENERAL_PROJECT_OPTION.id ? "opacity-100" : "opacity-0")} />
+                  {GENERAL_PROJECT_OPTION.project_name} ({GENERAL_PROJECT_OPTION.project_number})
+                </CommandItem>
+              </CommandGroup>
+            )}
             {isLoading ? (
               <div className="py-6 flex justify-center">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -50,7 +59,7 @@ export function ProjectExpenseProjectCombobox({ value, valueName, onChange, disa
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project.</CommandEmpty>
+                <CommandEmpty>{search.trim() ? "No matching project." : "Type a project name or number to search."}</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem

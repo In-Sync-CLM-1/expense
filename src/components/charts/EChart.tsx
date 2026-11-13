@@ -18,20 +18,20 @@ echarts.use([
   SVGRenderer,
 ]);
 
-// Chart ink & palette — expense brand hues (primary blue / violet / green),
+// Chart ink & palette — fleet navy/cyan hues (cyan / violet / green),
 // slotted into the validated categorical order (blue, ..., green, violet, ...).
 // Single-series bar charts use one hue only (never a rainbow per bar).
 export const viz = {
-  blue: '#2a78d6',
-  violet: '#4a3aa7',
-  green: '#008300',
+  blue: '#1a87b8',
+  violet: '#6a4fb3',
+  green: '#2f8a4d',
   // Ordinal ramp (one hue, light→dark) for ranked stages — funnels, tiers.
-  ramp3: ['#86b6ef', '#3987e5', '#1c5cab'],
-  ink: '#0b0b0b',
-  inkSecondary: '#52514e',
-  muted: '#898781',
-  grid: '#e1e0d9',
-  axis: '#c3c2b7',
+  ramp3: ['#8ccbe6', '#2f9bc9', '#14506f'],
+  ink: '#111a2e',
+  inkSecondary: '#4a5468',
+  muted: '#7b8497',
+  grid: '#e3e8ef',
+  axis: '#c9d1dd',
   surface: '#ffffff',
 };
 
