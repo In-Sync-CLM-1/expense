@@ -63,7 +63,11 @@ export function FileStrip({ files, emptyText = "No receipt uploaded" }: { files:
   );
 }
 
-export function receiptFiles(item: { receipt_url?: string | null; receipt_name?: string | null }): SupportFile[] {
+export function receiptFiles(item: { receipt_url?: string | null; receipt_name?: string | null; attachments?: unknown }): SupportFile[] {
+  // Every file saved on the line (up to 5); lines saved before multi-file attachments fall back to the single receipt.
+  if (Array.isArray(item.attachments) && item.attachments.length > 0) {
+    return (item.attachments as { url?: string; name?: string | null }[]).filter((a) => a?.url).map((a) => ({ url: a.url!, name: a.name ?? null }));
+  }
   return item.receipt_url ? [{ url: item.receipt_url, name: item.receipt_name }] : [];
 }
 
