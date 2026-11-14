@@ -42,32 +42,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
+      const version = ++checkRef.current;
+      let admin = false;
       if (currentUser) {
-        const version = ++checkRef.current;
         try {
           const { data } = await supabase.rpc("has_role" as never, {
             _user_id: currentUser.id,
             _role: "platform_admin",
           });
-          if (checkRef.current === version) setIsPlatformAdmin(!!data);
+          admin = !!data;
         } catch {
-          if (checkRef.current === version) setIsPlatformAdmin(false);
+          admin = false;
         }
-      } else {
-        checkRef.current++;
-        setIsPlatformAdmin(false);
       }
 
+      // A newer check has started: drop this answer and do not finish loading.
+      if (checkRef.current !== version) return;
+      setIsPlatformAdmin(admin);
       if (!initializedRef.current) {
         initializedRef.current = true;
         setLoading(false);
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-    });
-
+    // onAuthStateChange fires INITIAL_SESSION on subscribe, so no separate
+    // getSession() check is needed (it caused a duplicate, racing role check).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
     });
