@@ -42,19 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
+      const version = ++checkRef.current;
       if (currentUser) {
-        const version = ++checkRef.current;
+        let admin = false;
         try {
           const { data } = await supabase.rpc("has_role" as never, {
             _user_id: currentUser.id,
             _role: "platform_admin",
           });
-          if (checkRef.current === version) setIsPlatformAdmin(!!data);
+          admin = !!data;
         } catch {
-          if (checkRef.current === version) setIsPlatformAdmin(false);
+          admin = false;
         }
+        // A newer session event has started its own check: its answer counts, not this one.
+        // In particular a superseded check must not end the first loading, or the platform
+        // pages see "loaded, not an admin" and send a real admin away.
+        if (checkRef.current !== version) return;
+        setIsPlatformAdmin(admin);
       } else {
-        checkRef.current++;
         setIsPlatformAdmin(false);
       }
 
@@ -64,12 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-    });
-
+    // One source only: onAuthStateChange reports the current session as INITIAL_SESSION when
+    // it is set up, so a separate getSession() call would just run the same check twice at once.
+    // The check runs outside the callback (setTimeout) because awaiting Supabase calls inside
+    // onAuthStateChange can stall the auth client.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
+      setTimeout(() => handleSession(session), 0);
     });
 
     return () => subscription.unsubscribe();
