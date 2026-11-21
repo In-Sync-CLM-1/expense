@@ -297,7 +297,7 @@ export default function Approvals() {
         {isRmpl && (
           <TabsContent value="projectExpenses" className="mt-4 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold mb-2">Pending your approval as Project Owner</h3>
+              <h3 className="text-sm font-semibold mb-2">Project expense claims pending your approval</h3>
               {pendingProjectExpensesLoading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
               ) : !pendingProjectExpenses?.length ? (

@@ -13,6 +13,16 @@ import { uploadLineFiles, type LineAttachment } from "@/lib/lineAttachments";
  * an actual disbursed advance (expense_advances), never typed in.
  */
 
+/**
+ * Projects whose claims go to the claimant's reporting manager instead of the
+ * Project Owner (owner decision 2026-11-21). The database applies the same
+ * rule (trigger pe_claim_route_to_manager); this list only drives the labels.
+ */
+export const MANAGER_ROUTED_PROJECTS = ["RMPL-26-999"];
+
+export const isManagerRoutedProject = (projectNumber?: string | null) =>
+  !!projectNumber && MANAGER_ROUTED_PROJECTS.includes(projectNumber);
+
 export interface ProjectExpenseItem {
   id?: string;
   claim_id?: string;

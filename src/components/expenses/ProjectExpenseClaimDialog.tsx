@@ -14,6 +14,7 @@ import { ProjectExpenseProjectCombobox } from "./ProjectExpenseProjectCombobox";
 import {
   useCreateProjectExpenseClaim,
   useMyDisbursedAdvancesForProject,
+  isManagerRoutedProject,
   type RmplProjectOption,
 } from "@/hooks/useProjectExpenses";
 import { downloadProjectExpenseImportTemplate, parseProjectExpenseImportFile } from "@/lib/projectExpenseExcelImport";
@@ -263,7 +264,7 @@ export function ProjectExpenseClaimDialog({ open, onOpenChange, userId, orgId }:
             />
             {project && (
               <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
-                Project No. {project.project_number ?? "—"} · Project Owner: {project.project_owner_name ?? "Unresolved"}
+                Project No. {project.project_number ?? "—"} · {isManagerRoutedProject(project.project_number) ? "Approver: your reporting manager" : `Project Owner: ${project.project_owner_name ?? "Unresolved"}`}
                 {disbursedAdvances.length === 0 && " · No advance disbursed — Advance Received will be ₹0"}
                 {disbursedAdvances.length === 1 &&
                   ` · Advance Received: ₹${disbursedAdvances[0].amount.toLocaleString("en-IN")} on ${new Date(disbursedAdvances[0].advance_date).toLocaleDateString("en-IN")}${disbursedAdvances[0].note ? ` (${disbursedAdvances[0].note})` : ""}`}
