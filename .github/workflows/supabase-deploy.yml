@@ -51,6 +51,11 @@ jobs:
           body=$(jq -nc --arg q "$sql" '{query:$q}')
           curl -sS -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$body"
           echo
+      - name: Set RMPL push secret
+        env:
+          RMPL_PUSH_SECRET: ${{ secrets.RMPL_PUSH_SECRET }}
+        run: |
+          if [ -n "$RMPL_PUSH_SECRET" ]; then supabase secrets set RMPL_PUSH_SECRET="$RMPL_PUSH_SECRET" --project-ref "$SUPABASE_PROJECT_ID"; else echo "not set"; fi
       - name: Push database migrations
         run: |
           if [ -d supabase/migrations ]; then supabase db push --linked --yes; else echo "no migrations"; fi
